@@ -13,6 +13,8 @@
     </appender>
 
     <logger name="com.akonizo" level="INFO" />
+    <logger name="com.orientechnologies" level="DEBUG" />
+    <logger name="tinkerpop" level="DEBUG" />
 
     <root level="WARN">
         <appender-ref ref="CONSOLE" />
