@@ -1,5 +1,6 @@
 package com.akonizo.orientdb.tools
 
+import com.orientechnologies.common.exception.OException
 import com.orientechnologies.orient.core.command.OCommandExecutorNotFoundException
 import com.orientechnologies.orient.core.command.OCommandOutputListener
 import com.orientechnologies.orient.core.command.OCommandResultListener
@@ -8,7 +9,10 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
 import com.orientechnologies.orient.core.db.record.OIdentifiable
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBag
 import com.orientechnologies.orient.core.exception.OCommandExecutionException
+import com.orientechnologies.orient.core.exception.OConcurrentModificationException
 import com.orientechnologies.orient.core.exception.OSchemaException
+import com.orientechnologies.orient.core.id.ORID
+import com.orientechnologies.orient.core.record.ORecord
 import com.orientechnologies.orient.core.record.impl.ODocument
 import com.orientechnologies.orient.core.sql.OCommandSQL
 import com.orientechnologies.orient.core.sql.OCommandSQLParsingException
@@ -33,6 +37,16 @@ class DatabaseTools {
 
     public static final int BACKUP_COMPRESSION_LEVEL = 1
     public static final int BACKUP_BUFFER_SIZE = 1024 * 1024
+    public static final int MAX_POOL_SIZE = 5
+
+    /** Create a Graph Factory, with auto-start transactions disabled */
+    static OrientGraphFactory createOrientFactory(
+            String dbPath, String dbUser = OrientBaseGraph.ADMIN, String dbPass = 'admin',
+            int minPool = 1, int maxPool = MAX_POOL_SIZE) {
+        def factory = new OrientGraphFactory(dbPath, dbUser, dbPass).setupPool(minPool, maxPool);
+        factory.setAutoStartTx(false);
+        return factory;
+    }
 
     /** Open a database using the Document API */
     static def withDocumentDatabase(String dbPath, String dbUser, String dbPass, Closure<?> closure) {
@@ -43,7 +57,7 @@ class DatabaseTools {
         assert dbPass
 
         try {
-            DatabaseTools.log.debug "Connecting to ${dbUser}@${dbPath} ..."
+            log.debug "Connecting to ${dbUser}@${dbPath} ..."
             db = new ODatabaseDocumentTx(dbPath).open(dbUser, dbPass)
             return withDatabaseConnection(db, closure)
 
@@ -51,10 +65,30 @@ class DatabaseTools {
             try {
                 db?.close()
             } catch (Exception e) {
-                DatabaseTools.log.error "DB close exception", e
+                log.error "DB close exception", e
             }
         }
 
+    }
+
+    /** Open a connection using the Document API */
+    static def withDocumentDatabase(OrientGraphFactory factory, boolean transactional = true, Closure<?> closure) {
+        OrientBaseGraph graph = null
+
+        assert factory
+
+        try {
+            log.debug "Connecting to ${factory} ..."
+            graph = transactional ? factory.tx : factory.noTx
+            return withDatabaseConnection(graph.rawGraph, closure)
+
+        } finally {
+            try {
+                graph?.shutdown(true, transactional)
+            } catch (Exception e) {
+                log.error "DB close exception", e
+            }
+        }
     }
 
     /** Open a database using the Graph API */
@@ -62,9 +96,13 @@ class DatabaseTools {
         OrientGraphFactory factory = null
         OrientBaseGraph graph = null
 
+        assert dbPath
+        assert dbUser
+        assert dbPass
+
         try {
-            DatabaseTools.log.debug "Connecting to ${dbUser}@${dbPath} ..."
-            factory = new OrientGraphFactory(dbPath, dbUser, dbPass).setupPool(1, 1)
+            log.debug "Connecting to ${dbUser}@${dbPath} ..."
+            factory = createOrientFactory(dbPath, dbUser, dbPass, 1, 1)
             graph = transactional ? factory.tx : factory.noTx
             return withDatabaseConnection(graph, closure)
 
@@ -73,33 +111,54 @@ class DatabaseTools {
                 graph?.shutdown(true, transactional)
                 factory?.close()
             } catch (Exception e) {
-                DatabaseTools.log.error "DB close exception", e
+                log.error "DB close exception", e
+            }
+        }
+    }
+
+    /** Open a connection using the Graph API */
+    static def withGraphDatabase(OrientGraphFactory factory, boolean transactional = true, Closure<?> closure) {
+        OrientBaseGraph graph = null
+
+        assert factory
+
+        try {
+            log.debug "Connecting to ${factory} ..."
+            graph = transactional ? factory.tx : factory.noTx
+            return withDatabaseConnection(graph, closure)
+
+        } finally {
+            try {
+                graph?.shutdown(true, transactional)
+            } catch (Exception e) {
+                log.error "DB close exception", e
             }
         }
     }
 
     /** Common error handling for database connections */
-    static def withDatabaseConnection(Object connection, Closure closure) {
+    static private def withDatabaseConnection(Object connection, Closure closure) {
         def result = null
         try {
             result = closure.call(connection)
 
         } catch (InterruptedException e) {
-            DatabaseTools.log.error "Interrupted: ${e.message}"
+            log.error "Interrupted: ${e.message}"
 
         } catch (Exception e) {
-            DatabaseTools.log.error "DB action exception", e
+            log.error "DB action exception", e
 
         }
         return result
     }
 
+    /** Create an empty Graph database, overriding default passwords */
     static def createGraphDatabase(String dbPath, String dbAdminPass = 'admin', String dbReaderPass = 'reader', String dbWriterPass = 'writer') {
         OrientGraphFactory factory = null
         OrientBaseGraph graph
 
         try {
-            factory = new OrientGraphFactory(dbPath)
+            factory = createOrientFactory(dbPath)
             if (factory.exists()) {
                 factory.drop()
             }
@@ -109,7 +168,7 @@ class DatabaseTools {
         }
 
         try {
-            factory = new OrientGraphFactory(dbPath, 'admin', 'admin')
+            factory = createOrientFactory(dbPath, 'admin', 'admin')
             graph = factory.noTx
 
             doGraphCommands graph, """
@@ -124,18 +183,30 @@ class DatabaseTools {
         }
     }
 
+    /** Create a name for a unique database (for testing) */
+    static String uniqueDatabaseName() {
+        return "test-${UUID.randomUUID()}"
+    }
+
+    static String uniqueMemoryDatabaseName() {
+        return "memory:${uniqueDatabaseName()}"
+    }
+
     /** Backup a database using the Document API */
     static def backupDatabase(ODatabaseDocumentTx db, File file) {
         try {
-            DatabaseTools.log.info "Backing up ${db.URL} to ${file.path}"
             def listener = new LoggingListener()
             def backup = new FileOutputStream(file)
-            db.backup(backup, null, null, listener, BACKUP_COMPRESSION_LEVEL, BACKUP_BUFFER_SIZE)
-            DatabaseTools.log.info "Backup complete."
+            //TODO: FIX ME Commenting out until we find out backup over remote connection
+            if (!db.storage.remote) {
+                log.info "Backing up ${db.URL} to ${file.path}"
+                db.backup(backup, null, null, listener, BACKUP_COMPRESSION_LEVEL, BACKUP_BUFFER_SIZE)
+                log.info "Backup complete."
+            }
             return true
 
         } catch (IOException e) {
-            DatabaseTools.log.error "Unable to backup database: ${e}"
+            log.error "Unable to backup database: ${e}"
         }
         return false
     }
@@ -143,15 +214,15 @@ class DatabaseTools {
     /** Restore a database using the Document API */
     static def restoreDatabase(ODatabaseDocumentTx db, File file) {
         try {
-            DatabaseTools.log.info "Restoring ${db.URL} from ${file.path}"
+            log.info "Restoring ${db.URL} from ${file.path}"
             def listener = new LoggingListener()
             def backup = new FileInputStream(file)
             db.restore(backup, null, null, listener)
-            DatabaseTools.log.info "Restore complete."
+            log.info "Restore complete."
             return true
 
         } catch (IOException e) {
-            DatabaseTools.log.error "Unable to restore database: ${e}"
+            log.error "Unable to restore database: ${e}"
         }
         return false
     }
@@ -162,17 +233,55 @@ class DatabaseTools {
 
     static def removeDatabaseListeners(ODatabaseDocumentTx database) {
         for (ODatabaseListener l : database.browseListeners()) {
-            DatabaseTools.log.info "Unregister database listener: ${l}"
+            log.info "Unregister database listener: ${l}"
             database.unregisterListener(l)
         }
     }
 
     /** Remove all pertinent data from the graph */
     static def cleanGraphData(OrientBaseGraph graph) {
-        doGraphCommands graph, """
-            DELETE VERTEX V
-            DELETE EDGE E
-        """
+        assert graph != null
+        log.debug "Cleaning existing graph data: ${graph}"
+        def cmd = new OCommandSQL()
+        try {
+            graph.begin()
+            if (graph.rawGraph.existsCluster('V')) {
+                cmd.setText('DELETE VERTEX V')
+                graph.command(cmd).execute()
+            }
+            if (graph.rawGraph.existsCluster('E')) {
+                cmd.setText('DELETE EDGE E')
+                graph.command(cmd).execute()
+            }
+            graph.commit()
+
+        } catch (OException e) {
+            log.error "Unable to clean graph data: ${e.message}"
+        }
+    }
+
+    /** Attempt to commit a database transaction up to N times */
+    static boolean commitWithRetries(ODatabaseDocumentTx db, int attempts, String message = null, Closure closure) {
+        def result = false, retrying = true
+        while (retrying && attempts > 0) {
+            try {
+                db.begin()
+                result = closure.call()
+                if (result) {
+                    db.commit()
+                } else {
+                    db.rollback()
+                }
+                retrying = false
+
+            } catch (OConcurrentModificationException e) {
+                if (message) {
+                    log.debug "Retrying: ${message}"
+                }
+                attempts -= 1
+            }
+        }
+        return attempts > 0 ? result : false
     }
 
     /** Read SQL commands from a file and execute them for a database */
@@ -207,28 +316,28 @@ class DatabaseTools {
                 }
 
                 try {
-                    DatabaseTools.log.debug "Command: ${sqlcmd}"
+                    log.debug "Command: ${sqlcmd}"
                     cmd.setText(sqlcmd)
                     db.command(cmd).execute()
 
                 } catch (OSchemaException e) {
                     def error = "SQL command (${sqlcmd}) failed with schema error: ${e.message}"
-                    DatabaseTools.log.warn error
+                    log.warn error
                     // errors << error
 
                 } catch (OCommandSQLParsingException e) {
                     def error = "SQL command (${sqlcmd}) did not parse: ${e.message}"
-                    DatabaseTools.log.error error
+                    log.error error
                     errors << error
 
                 } catch (OCommandExecutorNotFoundException e) {
                     def error = "SQL command (${sqlcmd}) did not parse: ${e.message}"
-                    DatabaseTools.log.error error
+                    log.error error
                     errors << error
 
                 } catch (OCommandExecutionException e) {
                     def error = "Erroneous command: ${sqlcmd}: ${e.message}"
-                    DatabaseTools.log.error error
+                    log.error error
                     errors << error
                 }
             }
@@ -240,7 +349,7 @@ class DatabaseTools {
     static int withDocumentQuery(ODatabaseDocumentTx db, String sql, Closure closure) {
         def listener = new AsyncQueryListener(sql.toUpperCase().startsWith('SELECT FROM'), closure)
 
-        DatabaseTools.log.debug "Starting async query: ${sql}"
+        log.debug "Starting async query: ${sql}"
         db.query(new OSQLAsynchQuery<ODocument>(sql, -1, listener))
 
         return listener.count
@@ -254,13 +363,13 @@ class DatabaseTools {
             }
         }
 
-        DatabaseTools.log.debug "Starting async query: ${sql}"
+        log.debug "Starting async query: ${sql}"
         graph.command(new OSQLAsynchQuery<OrientElement>(sql, -1, listener)).execute()
 
         return listener.count
     }
 
-    static List<ODocument> doGraphQuery(OrientBaseGraph graph, String sql) {
+    static List<ODocument> doDocumentQuery(OrientBaseGraph graph, String sql) {
         return doDocumentQuery(graph.rawGraph, sql)
     }
 
@@ -268,7 +377,6 @@ class DatabaseTools {
         OSQLQuery<?> query = new OSQLSynchQuery<ODocument>(sql)
         query.limit = -1
         return db.command(query).execute()
-
     }
 
     static Object getResultField(List<ODocument> results, int row, String fieldname) {
@@ -284,7 +392,49 @@ class DatabaseTools {
         }
         return count
     }
+
+    static Map<String, Integer> countEdgeTypes(OrientVertex node) {
+        return countEdgeTypes(node.record)
+    }
+
+    static Map<String, Integer> countEdgeTypes(ODocument document) {
+        def counts = [:]
+        document.fieldNames().findAll { it.startsWith('in_') || it.startsWith('out_') }.each { String bagName ->
+            def name = bagName.split('_')[1..-1].join('_')
+            ORidBag bag = (ORidBag) document.field(bagName)
+            def size = bag?.size()
+            counts[name] = counts.containsKey(name) ? counts[name] + size : size
+        }
+        return counts
+    }
+
+    static Map<String, Integer> countConnectedNodeTypes(OrientVertex node) {
+        return countConnectedNodeTypes(node.record)
+    }
+
+    static Map<String, Integer> countConnectedNodeTypes(ODocument document) {
+        def db = document.database
+        def counts = [:]
+        document.fieldNames().findAll { it.startsWith('in_') }.each { String bagName ->
+            ORidBag bag = (ORidBag) document.field(bagName)
+            for (ORecord edge : bag) {
+                ORID node = edge.field('out', ORID.class)
+                def name = db.getClusterNameById(node.clusterId)
+                counts[name] = counts.containsKey(name) ? counts[name] + 1 : 1
+            }
+        }
+        document.fieldNames().findAll { it.startsWith('out_') }.each { String bagName ->
+            ORidBag bag = (ORidBag) document.field(bagName)
+            for (ORecord edge : bag) {
+                ORID node = edge.field('in', ORID.class)
+                def name = db.getClusterNameById(node.clusterId)
+                counts[name] = counts.containsKey(name) ? counts[name] + 1 : 1
+            }
+        }
+        return counts
+    }
 }
+
 @Slf4j
 class AsyncQueryListener implements OCommandResultListener {
 

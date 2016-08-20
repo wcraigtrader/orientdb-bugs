@@ -1,7 +1,7 @@
 package com.akonizo.orientdb.bugs
 
 import com.orientechnologies.orient.core.record.impl.ODocument
-import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory
 import groovy.util.logging.Slf4j
 
 import static com.akonizo.orientdb.tools.DatabaseTools.*
@@ -16,8 +16,11 @@ import static com.akonizo.orientdb.tools.DatabaseTools.*
 @Slf4j
 class VertexMapBug {
     public static void main(String[] args) {
-        withGraphDatabase( 'memory:test', 'admin', 'admin', false ) { OrientBaseGraph graph ->
+        log.info "Orient Version = ${OrientGraphFactory.class.package.implementationVersion}"
 
+        OrientGraphFactory factory = createOrientFactory('memory:test')
+
+        withGraphDatabase(factory, false) { graph ->
             doGraphCommands graph, """
 -- Initialize database configuration
 alter database TIMEZONE UTC
@@ -35,25 +38,26 @@ create class xdocument
 create property xdocument.source LINK
 create property xdocument.language STRING
 """
+        }
 
+        withGraphDatabase(factory, true) { graph ->
             // Create a new graph node
-            def node = graph.addVertex( 'class:xnode' )
-            node.setProperty( 'key', 'foo' )
-            node.setProperty( 'docs', [:] )
+            graph.begin()
+            def node = graph.addVertex('class:xnode', [key: 'foo', docs: [:]])
             graph.commit()
 
             // Create a new document, with link back to node
-            def doc = new ODocument( 'xdocument' )
-            doc.field( 'source', node.getIdentity() )
-            doc.field( 'language', 'fr' )
-            graph.rawGraph.save( doc )
+            graph.begin()
+            def doc = new ODocument('xdocument')
+            doc.fromMap([source: node.identity, language: 'fr'])
+            graph.rawGraph.save(doc)
 
             // Update the node with a Map entry that links to the document
-            def map = node.getProperty( 'docs' )
+            def map = node.getProperty('docs')
             assert map instanceof Map
 
             map['fr'] = doc.getIdentity()
-            node.setProperty( 'docs', map )
+            node.setProperty('docs', map)
             graph.commit()
 
             log.info "doc  = ${doc.toJSON()}"
@@ -62,5 +66,8 @@ create property xdocument.language STRING
             def xmap = node.getProperty('docs')
             assert xmap instanceof Map
         }
+
+        factory.drop()
+        factory.close()
     }
 }

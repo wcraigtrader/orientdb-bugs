@@ -47,7 +47,9 @@ class ODocumentBug {
         for (Vertex v : nodes ) {
             log.debug("Retrieved ${key} from ${clazz}")
             OrientVertex ov = (OrientVertex) v
-            return ov.getRecord()
+            ODocument doc = ov.getRecord()
+            // doc.setLazyLoad(false)
+            return doc
         }
         return null
     }
@@ -75,7 +77,7 @@ class ODocumentBug {
         g?.shutdown()
         log.info( "Outside graph: ${doc2}" )
 
-        assert doc1.properties == doc2.properties
+        assert doc1.record.toString() == doc2.record.toString()
 
         if (dbpath.startsWith("memory:") ) f?.drop()
         f?.close()
