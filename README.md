@@ -2,7 +2,7 @@ This project is used for demonstrating *features* of OrientDB.
 
 # Server Databases graph connections must not overlap
 
-[Test class](../blob/master/src/main/groovy/com/akonizo/orientdb/RemoteServerSchemaBug.groovy)
+[Test class](../master/src/main/groovy/com/akonizo/orientdb/RemoteServerSchemaBug.groovy)
 
 In OrientDB 2.1.20, when connecting to a remote database with a OrientGraphFactory with autoStartTx disabled, you cannot have overlapped graph connections within a single thread. This works with local memory databases, and local physical databases (plocal:). 
 
@@ -67,13 +67,13 @@ INFO: OrientDB auto-config DISKCACHE=10,695MB (heap=3,641MB os=16,384MB disk=27,
 
 # Embedded Maps with ORecordID values fail
 
-[Test class](../blob/master/src/main/groovy/com/akonizo/orientdb/VertexMapBug.groovy)
+[Test class](../master/src/main/groovy/com/akonizo/orientdb/VertexMapBug.groovy)
 
 In OrientDB < 2.1.20, if you create a Vertex with an EmbeddedMap property, and that Map is defined as Map<String,ORID>, you can persist an ORecordId in the map, but when you retrieve the Map from Orient, Orient will 'help' you by converting the Map into an OrientElementIterator instead.
 
 # Graph / ODocument interaction
 
-[Test class](../blob/master/src/main/groovy/com/akonizo/orientdb/ODocumentBug.groovy)
+[Test class](../master/src/main/groovy/com/akonizo/orientdb/ODocumentBug.groovy)
 
 In OrientDB 1.7.X you can retrieve a document from the graph, and then shutdown the graph, and still access the document.  In Orient 2.0.X, this behavior is not supported.
 
