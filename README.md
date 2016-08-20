@@ -28,42 +28,35 @@ Example run:
 
 ```
 $ ./gradlew -q -POV=2.1.20 run
-2016-08-20 12:52:01 INFO  c.a.o.b.RemoteServerSchemaBug - Orient Version = 2.1.20
-2016-08-20 12:52:01 INFO  c.a.o.b.RemoteServerSchemaBug -
-2016-08-20 12:52:01 INFO  c.a.o.b.RemoteServerSchemaBug - ***** Testing against local memory database *****
-2016-08-20 12:52:01 INFO  c.a.o.b.RemoteServerSchemaBug -
-2016-08-20 12:52:01 INFO  c.a.o.b.RemoteServerSchemaBug - Testing working order against memory:working
-Aug 20, 2016 12:52:01 PM com.orientechnologies.common.log.OLogManager log
-INFO: OrientDB auto-config DISKCACHE=10,695MB (heap=3,641MB os=16,384MB disk=27,512MB)
-2016-08-20 12:52:02 INFO  c.a.o.b.RemoteServerSchemaBug - Test succeeded.
-
-2016-08-20 12:52:02 INFO  c.a.o.b.RemoteServerSchemaBug - Testing failing order against memory:failing
-2016-08-20 12:52:02 INFO  c.a.o.b.RemoteServerSchemaBug - Test succeeded.
-
-
-2016-08-20 12:52:02:883 INFO  Loading configuration from input stream [OServerConfigurationLoaderXml]
-2016-08-20 12:52:02:960 INFO  OrientDB Server v2.1.20 is starting up... [OServer]
-2016-08-20 12:52:02:962 INFO  Databases directory: /Users/ctrader/src/orientdb-community-2.0.10/databases [OServer]
-2016-08-20 12:52:02:976 INFO  Listening binary connections on 127.0.0.1:4444 (protocol v.32, socket=default) [OServerNetworkListener]
-2016-08-20 12:52:02:977 INFO  OrientDB Server v2.1.20 is active. [OServer]2016-08-20 12:52:02 INFO  c.a.o.b.RemoteServerSchemaBug -
-2016-08-20 12:52:02 INFO  c.a.o.b.RemoteServerSchemaBug - ***** Testing against remote database *****
-2016-08-20 12:52:02 INFO  c.a.o.b.RemoteServerSchemaBug -
-
-2016-08-20 12:52:03:113 INFO  {db=remote-working} Created database 'remote-working' of type 'memory' [ONetworkProtocolBinary]2016-08-20 12:52:03 INFO  c.a.o.b.RemoteServerSchemaBug - Testing working order against remote:localhost:4444/remote-working
-
-2016-08-20 12:52:03:184 WARNI The command 'Committing the active transaction to create the new type 'person' as subclass of 'V'. The transaction will be reopen right after that. To avoid this behavior create the classes outside the transaction' must be executed outside an active transaction: the transaction will be committed and reopen right after it. To avoid this behavior execute it outside a transaction (db=remote-working) [OrientGraph]2016-08-20 12:52:03 INFO  c.a.o.b.RemoteServerSchemaBug - Test succeeded.
-
-
-2016-08-20 12:52:03:209 INFO  {db=remote-working} Dropped database 'remote-working' [ONetworkProtocolBinary]
-2016-08-20 12:52:03:302 INFO  {db=remote-failing} Created database 'remote-failing' of type 'memory' [ONetworkProtocolBinary]2016-08-20 12:52:03 INFO  c.a.o.b.RemoteServerSchemaBug - Testing failing order against remote:localhost:4444/remote-failing
-
-2016-08-20 12:52:03:360 WARNI The command 'Committing the active transaction to create the new type 'person' as subclass of 'V'. The transaction will be reopen right after that. To avoid this behavior create the classes outside the transaction' must be executed outside an active transaction: the transaction will be committed and reopen right after it. To avoid this behavior execute it outside a transaction (db=remote-failing) [OrientGraph]2016-08-20 12:52:03 ERROR c.a.o.b.RemoteServerSchemaBug - ***** DATETIMEFORMAT NOT DEFINED *****
-2016-08-20 12:52:03 ERROR c.a.o.b.RemoteServerSchemaBug - Error on parsing command at position #0: Error on conversion of date '2000-01-01T00:00:00Z' using the format: yyyy-MM-dd HH:mm:ss
-
-2016-08-20 12:52:03:377 INFO  {db=remote-failing} Dropped database 'remote-failing' [ONetworkProtocolBinary]2016-08-20 12:52:03 INFO  c.a.o.b.RemoteServerSchemaBug - Test complete
-
-2016-08-20 12:52:03:381 INFO  OrientDB Server is shutting down... [OServer]
-```
+2016-08-20 14:11:57 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Orient Version = 2.1.20
+2016-08-20 14:11:57 INFO  main                      c.a.o.b.RemoteServerSchemaBug -
+2016-08-20 14:11:57 INFO  main                      c.a.o.b.RemoteServerSchemaBug - ***** Testing against local memory database *****
+2016-08-20 14:11:57 INFO  main                      c.a.o.b.RemoteServerSchemaBug -
+2016-08-20 14:11:57 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Testing working order against memory:working
+2016-08-20 14:11:57 INFO  main                      com.orientechnologies - OrientDB auto-config DISKCACHE=10,695MB (heap=3,641MB os=16,384MB disk=27,362MB)
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Test succeeded.
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Testing failing order against memory:failing
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Test succeeded.
+2016-08-20 14:11:58 INFO  main                      c.o.o.s.c.OServerConfigurationLoaderXml - Loading configuration from input stream
+2016-08-20 14:11:58 INFO  main                      c.o.o.server.OServer - OrientDB Server v2.1.20 is starting up...
+2016-08-20 14:11:58 INFO  main                      c.o.o.server.OServer - Databases directory: /Users/ctrader/Workspace/orientbugs/./databases
+2016-08-20 14:11:58 INFO  main                      c.o.o.s.n.OServerNetworkListener - Listening binary connections on 127.0.0.1:4444 (protocol v.32, socket=default)
+2016-08-20 14:11:58 INFO  main                      c.o.o.server.OServer - OrientDB Server v2.1.20 is active.
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug -
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug - ***** Testing against remote database *****
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug -
+2016-08-20 14:11:58 INFO  OrientDB <- BinaryClient (/127.0.0.1:61571) c.o.o.s.n.p.b.ONetworkProtocolBinary - {db=remote-working} Created database 'remote-working' of type 'memory'
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Testing working order against remote:localhost:4444/remote-working
+2016-08-20 14:11:58 WARN  main                      c.t.b.i.o.OrientGraph - The command 'Committing the active transaction to create the new type 'person' as subclass of 'V'. The transaction will be reopen right after that. To avoid this behavior create the classes outside the transaction' must be executed outside an active transaction: the transaction will be committed and reopen right after it. To avoid this behavior execute it outside a transaction (db=remote-working)
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Test succeeded.
+2016-08-20 14:11:58 INFO  OrientDB <- BinaryClient (/127.0.0.1:61573) c.o.o.s.n.p.b.ONetworkProtocolBinary - {db=remote-working} Dropped database 'remote-working'
+2016-08-20 14:11:58 INFO  OrientDB <- BinaryClient (/127.0.0.1:61574) c.o.o.s.n.p.b.ONetworkProtocolBinary - {db=remote-failing} Created database 'remote-failing' of type 'memory'
+2016-08-20 14:11:58 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Testing failing order against remote:localhost:4444/remote-failing
+2016-08-20 14:11:59 WARN  main                      c.t.b.i.o.OrientGraph - The command 'Committing the active transaction to create the new type 'person' as subclass of 'V'. The transaction will be reopen right after that. To avoid this behavior create the classes outside the transaction' must be executed outside an active transaction: the transaction will be committed and reopen right after it. To avoid this behavior execute it outside a transaction (db=remote-failing)
+2016-08-20 14:11:59 ERROR main                      c.a.o.b.RemoteServerSchemaBug - ***** DATETIMEFORMAT NOT DEFINED *****
+2016-08-20 14:11:59 ERROR main                      c.a.o.b.RemoteServerSchemaBug - Error on parsing command at position #0: Error on conversion of date '2000-01-01T00:00:00Z' using the format: yyyy-MM-dd HH:mm:ss
+2016-08-20 14:11:59 INFO  OrientDB <- BinaryClient (/127.0.0.1:61576) c.o.o.s.n.p.b.ONetworkProtocolBinary - {db=remote-failing} Dropped database 'remote-failing'
+2016-08-20 14:11:59 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Test complete```
 
 # Embedded Maps with ORecordID values fail
 

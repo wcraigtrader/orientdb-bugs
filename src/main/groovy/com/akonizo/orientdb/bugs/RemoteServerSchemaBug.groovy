@@ -13,6 +13,8 @@ import groovy.util.logging.Slf4j
 @Slf4j
 class RemoteServerSchemaBug {
 
+    static String VERSION = OrientGraphFactory.class.package.implementationVersion
+
     static OServer server = null
     static String dbHost = "remote:localhost:4444"
 
@@ -22,7 +24,7 @@ class RemoteServerSchemaBug {
     public static void main(String[] args) {
         String dbPath
 
-        log.info "Orient Version = ${OrientGraphFactory.class.package.implementationVersion}"
+        log.info "Orient Version = ${VERSION}"
 
         log.info ''
         log.info "***** Testing against local memory database *****"
@@ -114,8 +116,8 @@ class RemoteServerSchemaBug {
     public static Object defineSchema(OrientGraphFactory factory) {
         return DatabaseTools.withGraphDatabase(factory, false) { OrientBaseGraph g ->
             DatabaseTools.doGraphCommands g, """
-                alter database TIMEZONE ${DateTools.TIME_ZONE}
-                alter database DATETIMEFORMAT ${DateTools.TIME_FORMAT}
+                alter database TIMEZONE "${DateTools.TIME_ZONE}"
+                alter database DATETIMEFORMAT "${DateTools.TIME_FORMAT}"
                 alter database custom useLightweightEdges=false
                 alter database custom useVertexFieldsForEdgeLabels=true
 
@@ -147,7 +149,7 @@ class RemoteServerSchemaBug {
             assert node.getProperty('created') == date
             assert json.contains("""\"created\":\"${iso}\"""")
 
-            log.info "Test succeeded.\n"
+            log.info "Test succeeded."
 
         } catch (OQueryParsingException e) {
             log.error "***** DATETIMEFORMAT NOT DEFINED *****"
@@ -190,7 +192,7 @@ class RemoteServerSchemaBug {
                 <properties>
                     <entry name="db.pool.min" value="1" />
                     <entry name="db.pool.max" value="5" />
-                    <entry name="log.console.level" value="info" />
+                    <entry name="log.console.level" value="finest" />
                     <entry name="log.file.level" value="fine" />
                     <entry name="plugin.dynamic" value="false" />
                     <entry name="profiler.enabled" value="false" />

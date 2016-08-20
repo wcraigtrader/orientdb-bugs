@@ -495,6 +495,10 @@ class AsyncQueryListener implements OCommandResultListener {
         def now = System.currentTimeMillis()
         log.debug String.format('Processed %,d rows in %,d seconds', count, TimeUnit.MILLISECONDS.toSeconds(now - start))
     }
+
+    Object getResult() {
+        return null
+    }
 }
 
 @Slf4j
