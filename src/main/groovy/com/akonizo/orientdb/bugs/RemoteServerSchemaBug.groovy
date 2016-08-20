@@ -31,8 +31,8 @@ class RemoteServerSchemaBug {
         log.info ''
 
         testWorkingOrderOfOperations('memory:working', true)
-
         testFailingOrderOfOperations('memory:failing', true)
+        testAnotherWayToFail('memory:another', true)
 
         server = startServer()
 
@@ -47,6 +47,10 @@ class RemoteServerSchemaBug {
         dbPath = makeRemoteDatabase('remote-failing')
         testFailingOrderOfOperations(dbPath)
         dropRemoteDatabase('remote-failing')
+
+        dbPath = makeRemoteDatabase('remote-another')
+        testAnotherWayToFail(dbPath)
+        dropRemoteDatabase('remote-another')
 
         // Drop the server
         stopServer(server)
@@ -71,6 +75,39 @@ class RemoteServerSchemaBug {
 
             // Define a schema for the database using a newly created non-transactional graph instance
             defineSchema(factory)
+            testUsingDatabase(graph)
+
+        } finally {
+            // Clean up connections
+            graph?.shutdown()
+            if (drop) {
+                factory?.drop()
+            }
+            factory?.close()
+        }
+    }
+
+    /** Test working order of operations */
+    static void testAnotherWayToFail(String dbPath, boolean drop = false) {
+        OrientGraphFactory factory = null
+        OrientBaseGraph graph = null
+
+        log.info "Testing another way to fail against ${dbPath}"
+        try {
+            // Create a factory for the database
+            factory = new OrientGraphFactory(dbPath, 'admin', 'admin').setupPool(1, 5)
+            factory.setAutoStartTx(false)
+
+            // Create but don't use a transactional graph instance
+            graph = factory.tx
+            graph?.shutdown()
+
+            // Define a schema for the database using a newly created non-transactional graph instance
+            defineSchema(factory)
+
+            // Get Graph afterwards
+            graph = factory.tx
+
             testUsingDatabase(graph)
 
         } finally {
