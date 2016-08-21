@@ -212,14 +212,79 @@ class RemoteServerSchemaBug {
     /** Create a server */
     public static void startServer() {
         server = new OServer()
-        server.startup """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        if (VERSION.startsWith( '2.1.') ) {
+            server.startup """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <orient-server>
+                    <network>
+                        <handlers>
+                            <handler class="com.orientechnologies.orient.graph.handler.OGraphServerHandler">
+                                <parameters>
+                                    <parameter value="true" name="enabled"/>
+                                    <parameter value="50" name="graph.pool.max"/>
+                                </parameters>
+                            </handler>
+                        </handlers>
+                        <protocols>
+                            <protocol implementation="com.orientechnologies.orient.server.network.protocol.binary.ONetworkProtocolBinary" name="binary"/>
+                        </protocols>
+                        <listeners>
+                            <listener protocol="binary" socket="default" port-range="4444-4444" ip-address="127.0.0.1"/>
+                        </listeners>
+                    </network>
+                    <storages/>
+                    <users>
+                        <user name="${serverUser}" password="${serverPass}" resources="*" />
+                    </users>
+                    <properties>
+                        <entry name="db.pool.min" value="1" />
+                        <entry name="db.pool.max" value="5" />
+                        <entry name="log.console.level" value="finest" />
+                        <entry name="log.file.level" value="fine" />
+                        <entry name="plugin.dynamic" value="false" />
+                        <entry name="profiler.enabled" value="false" />
+                    </properties>
+                </orient-server>
+                """
+        } else if (VERSION.startsWith('2.2.') ) {
+            server.startup """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <orient-server>
+                <handlers>
+                    <handler class="com.orientechnologies.orient.graph.handler.OGraphServerHandler">
+                        <parameters>
+                            <parameter name="enabled" value="true"/>
+                            <parameter name="graph.pool.max" value="50"/>
+                        </parameters>
+                    </handler>
+                </handlers>
                 <network>
+                    <!--
+                    <sockets>
+                        <socket implementation="com.orientechnologies.orient.server.network.OServerTLSSocketFactory" name="ssl">
+                            <parameters>
+                                <parameter value="false" name="network.ssl.clientAuth"/>
+                                <parameter value="config/cert/orientdb.ks" name="network.ssl.keyStore"/>
+                                <parameter value="password" name="network.ssl.keyStorePassword"/>
+                                <parameter value="config/cert/orientdb.ks" name="network.ssl.trustStore"/>
+                                <parameter value="password" name="network.ssl.trustStorePassword"/>
+                            </parameters>
+                        </socket>
+                        <socket implementation="com.orientechnologies.orient.server.network.OServerTLSSocketFactory" name="https">
+                            <parameters>
+                                <parameter value="false" name="network.ssl.clientAuth"/>
+                                <parameter value="config/cert/orientdb.ks" name="network.ssl.keyStore"/>
+                                <parameter value="password" name="network.ssl.keyStorePassword"/>
+                                <parameter value="config/cert/orientdb.ks" name="network.ssl.trustStore"/>
+                                <parameter value="password" name="network.ssl.trustStorePassword"/>
+                            </parameters>
+                        </socket>
+                    </sockets>
+                    -->
+                    <sockets/>
                     <protocols>
-                        <protocol implementation="com.orientechnologies.orient.server.network.protocol.binary.ONetworkProtocolBinary" name="binary"/>
+                        <protocol name="binary" implementation="com.orientechnologies.orient.server.network.protocol.binary.ONetworkProtocolBinary"/>
                     </protocols>
                     <listeners>
-                        <listener protocol="binary" socket="default" port-range="4444-4444" ip-address="127.0.0.1"/>
+                        <listener protocol="binary" ip-address="0.0.0.0" port-range="4444-4444" socket="default"/>
                     </listeners>
                 </network>
                 <storages/>
@@ -227,15 +292,13 @@ class RemoteServerSchemaBug {
                     <user name="${serverUser}" password="${serverPass}" resources="*" />
                 </users>
                 <properties>
-                    <entry name="db.pool.min" value="1" />
-                    <entry name="db.pool.max" value="5" />
-                    <entry name="log.console.level" value="finest" />
-                    <entry name="log.file.level" value="fine" />
-                    <entry name="plugin.dynamic" value="false" />
-                    <entry name="profiler.enabled" value="false" />
+                    <entry name="db.pool.min" value="1"/>
+                    <entry name="db.pool.max" value="50"/>
+                    <entry name="profiler.enabled" value="false"/>
                 </properties>
             </orient-server>
             """
+        }
         server.activate()
     }
 
