@@ -33,6 +33,7 @@ class RemoteServerSchemaBug {
         testWorkingOrderOfOperations('memory:working', true)
         testFailingOrderOfOperations('memory:failing', true)
         testAnotherWayToFail('memory:another', true)
+        testIdentityStates('memory:identity', true)
 
         server = startServer()
 
@@ -51,6 +52,10 @@ class RemoteServerSchemaBug {
         dbPath = makeRemoteDatabase('remote-another')
         testAnotherWayToFail(dbPath)
         dropRemoteDatabase('remote-another')
+
+        dbPath = makeRemoteDatabase('remote-identity')
+        testIdentityStates(dbPath)
+        dropRemoteDatabase('remote-identity')
 
         // Drop the server
         stopServer(server)
@@ -138,6 +143,48 @@ class RemoteServerSchemaBug {
             graph = factory.tx
 
             testUsingDatabase(graph)
+
+        } finally {
+            // Clean up connections
+            graph?.shutdown()
+            if (drop) {
+                factory?.drop()
+            }
+            factory?.close()
+        }
+    }
+
+    /** Test identity states */
+    static void testIdentityStates(String dbPath, boolean drop = false) {
+        OrientGraphFactory factory = null
+        OrientBaseGraph graph = null
+
+        log.info "Testing identity states against ${dbPath}"
+        try {
+            // Create a factory for the database
+            factory = new OrientGraphFactory(dbPath, 'admin', 'admin').setupPool(1, 5)
+            factory.setAutoStartTx(false)
+
+            // Define a schema for the database using a newly created non-transactional graph instance
+            defineSchema(factory)
+
+            // Get Graph afterwards
+            graph = factory.tx
+
+            graph.begin()
+            def node = graph.addVertex 'class:person', [name: 'Luca', age: 42]
+            log.info "${node} => new(${node.identity.new}), temporary(${node.identity.temporary}), persistent(${node.identity.persistent})"
+
+            assert node.identity.new
+            assert !node.identity.persistent
+            assert node.identity.temporary
+
+            graph.commit()
+
+        } catch (AssertionError e) {
+            log.error "***** Node Should be Temporary *****"
+            System.err.println e.message
+            graph.rollback()
 
         } finally {
             // Clean up connections
