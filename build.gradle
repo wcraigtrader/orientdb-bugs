@@ -1,7 +1,7 @@
 // Allow selecting OrientDB and Groovy from the commandline
 def javaVersion = System.getProperty( 'java.version' )
 def groovyVersion = project.hasProperty("GV") ? GV : '2.4.5'
-def orientVersion = project.hasProperty('OV') ? OV : '2.1.20'
+def orientVersion = project.hasProperty('OV') ? OV : '2.2.7' // '2.1.20'
 
 apply plugin: 'groovy'
 apply plugin: 'application'

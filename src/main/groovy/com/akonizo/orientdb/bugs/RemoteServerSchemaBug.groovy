@@ -33,7 +33,7 @@ class RemoteServerSchemaBug {
         testWorkingOrderOfOperations('memory:working', true)
         testFailingOrderOfOperations('memory:failing', true)
         testAnotherWayToFail('memory:another', true)
-        testIdentityStates('memory:identity', true)
+//        testIdentityStates('memory:identity', true)
 
         server = startServer()
 
@@ -53,9 +53,9 @@ class RemoteServerSchemaBug {
         testAnotherWayToFail(dbPath)
         dropRemoteDatabase('remote-another')
 
-        dbPath = makeRemoteDatabase('remote-identity')
-        testIdentityStates(dbPath)
-        dropRemoteDatabase('remote-identity')
+//        dbPath = makeRemoteDatabase('remote-identity')
+//        testIdentityStates(dbPath)
+//        dropRemoteDatabase('remote-identity')
 
         // Drop the server
         stopServer(server)
@@ -80,6 +80,8 @@ class RemoteServerSchemaBug {
 
             // Define a schema for the database using a newly created non-transactional graph instance
             defineSchema(factory)
+
+            graph.rawGraph.reload()
             testUsingDatabase(graph)
 
         } finally {
@@ -113,6 +115,7 @@ class RemoteServerSchemaBug {
             // Get Graph afterwards
             graph = factory.tx
 
+            graph.rawGraph.reload()
             testUsingDatabase(graph)
 
         } finally {
@@ -216,6 +219,7 @@ class RemoteServerSchemaBug {
                 create class knows extends E
                 create class drives extends E
             """
+            g.rawGraph.reload()
         }
     }
 
@@ -237,6 +241,7 @@ class RemoteServerSchemaBug {
 
         } catch (OQueryParsingException e) {
             log.error "***** DATETIMEFORMAT NOT DEFINED *****"
+            log.error """DATETIMEFORMAT = \"${graph.rawGraph.storage.configuration.dateTimeFormat}\""""
             log.error e.message
         }
     }
