@@ -8,27 +8,39 @@ import org.slf4j.bridge.SLF4JBridgeHandler
 SLF4JBridgeHandler.removeHandlersForRootLogger()
 SLF4JBridgeHandler.install()
 
-def PATTERN = '%date{yyyy-MM-dd HH:mm:ss} %-5level %-25thread %logger{22} - %m%n'
+def DATED_PATTERN = '%date{yyyy-MM-dd HH:mm:ss} %-5level %-27thread %logger{22} - %m%n'
+def BRIEF_PATTERN = '%m%n'
 
 // Define console logging
 appender('CONSOLE', ConsoleAppender) {
     encoder(PatternLayoutEncoder) {
-        pattern = PATTERN
+        pattern = DATED_PATTERN
     }
 }
 
 appender('FILE', FileAppender) {
     encoder(PatternLayoutEncoder) {
-        pattern = PATTERN
+        pattern = DATED_PATTERN
     }
-    file = 'performance.log'
-    append = true
+    file = 'console.log'
+    append = false
+}
+
+appender('TRANSACTION', FileAppender) {
+    encoder(PatternLayoutEncoder) {
+        pattern = BRIEF_PATTERN
+    }
+    file = 'transaction.log'
+    append = false
 }
 
 // Enable appenders
 root(WARN, ['CONSOLE','FILE'])
 
+// Standalone log for transaction logging
+logger('TRANSACTION', DEBUG, ['TRANSACTION'], false)
+
 // Override log levels
-logger('com.akonizo', INFO)
+logger('com.akonizo', DEBUG)
 logger('com.orientechnologies', DEBUG)
 logger('tinkerpop', DEBUG)

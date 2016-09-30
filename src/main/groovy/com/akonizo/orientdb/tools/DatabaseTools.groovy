@@ -2,11 +2,7 @@ package com.akonizo.orientdb.tools
 
 import com.orientechnologies.common.exception.OException
 import com.orientechnologies.orient.core.command.OCommandExecutorNotFoundException
-import com.orientechnologies.orient.core.command.OCommandOutputListener
-import com.orientechnologies.orient.core.command.OCommandResultListener
-import com.orientechnologies.orient.core.db.ODatabaseListener
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
-import com.orientechnologies.orient.core.db.record.OIdentifiable
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBag
 import com.orientechnologies.orient.core.exception.OCommandExecutionException
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException
@@ -19,21 +15,24 @@ import com.orientechnologies.orient.core.sql.OCommandSQLParsingException
 import com.orientechnologies.orient.core.sql.query.OSQLAsynchQuery
 import com.orientechnologies.orient.core.sql.query.OSQLQuery
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery
+import com.tinkerpop.blueprints.Edge
+import com.tinkerpop.blueprints.Vertex
 import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph
+import com.tinkerpop.blueprints.impls.orient.OrientEdge
 import com.tinkerpop.blueprints.impls.orient.OrientElement
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory
 import com.tinkerpop.blueprints.impls.orient.OrientVertex
-import groovy.util.logging.Slf4j
-
-import java.util.concurrent.TimeUnit
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * This class contains methods for working with OrientDB's document and graph APIs.
  *
  * The methods are all static so that they can be used in a multi-threaded environment.
  */
-@Slf4j
 class DatabaseTools {
+
+    public static final Logger logger = LoggerFactory.getLogger(DatabaseTools)
 
     public static final int BACKUP_COMPRESSION_LEVEL = 1
     public static final int BACKUP_BUFFER_SIZE = 1024 * 1024
@@ -57,7 +56,7 @@ class DatabaseTools {
         assert dbPass
 
         try {
-            log.debug "Connecting to ${dbUser}@${dbPath} ..."
+            logger.debug "Connecting to ${dbUser}@${dbPath} ..."
             db = new ODatabaseDocumentTx(dbPath).open(dbUser, dbPass)
             return withDatabaseConnection(db, closure)
 
@@ -65,7 +64,7 @@ class DatabaseTools {
             try {
                 db?.close()
             } catch (Exception e) {
-                log.error "DB close exception", e
+                logger.error "DB close exception", e
             }
         }
 
@@ -78,7 +77,7 @@ class DatabaseTools {
         assert factory
 
         try {
-            log.debug "Connecting to ${factory} ..."
+            logger.debug "Connecting to ${factory.class.simpleName} ..."
             graph = transactional ? factory.tx : factory.noTx
             return withDatabaseConnection(graph.rawGraph, closure)
 
@@ -86,7 +85,7 @@ class DatabaseTools {
             try {
                 graph?.shutdown(true, transactional)
             } catch (Exception e) {
-                log.error "DB close exception", e
+                logger.error "DB close exception", e
             }
         }
     }
@@ -101,7 +100,7 @@ class DatabaseTools {
         assert dbPass
 
         try {
-            log.debug "Connecting to ${dbUser}@${dbPath} ..."
+            logger.debug "Connecting to ${dbUser}@${dbPath} ..."
             factory = createOrientFactory(dbPath, dbUser, dbPass, 1, 1)
             graph = transactional ? factory.tx : factory.noTx
             return withDatabaseConnection(graph, closure)
@@ -111,7 +110,7 @@ class DatabaseTools {
                 graph?.shutdown(true, transactional)
                 factory?.close()
             } catch (Exception e) {
-                log.error "DB close exception", e
+                logger.error "DB close exception", e
             }
         }
     }
@@ -123,7 +122,7 @@ class DatabaseTools {
         assert factory
 
         try {
-            log.debug "Connecting to ${factory} ..."
+            logger.debug "Connecting to ${factory.class.simpleName} ..."
             graph = transactional ? factory.tx : factory.noTx
             return withDatabaseConnection(graph, closure)
 
@@ -131,7 +130,7 @@ class DatabaseTools {
             try {
                 graph?.shutdown(true, transactional)
             } catch (Exception e) {
-                log.error "DB close exception", e
+                logger.error "DB close exception", e
             }
         }
     }
@@ -143,10 +142,10 @@ class DatabaseTools {
             result = closure.call(connection)
 
         } catch (InterruptedException e) {
-            log.error "Interrupted: ${e.message}"
+            logger.error "Interrupted: ${e.message}"
 
         } catch (Exception e) {
-            log.error "DB action exception", e
+            logger.error "DB action exception", e
 
         }
         return result
@@ -197,16 +196,16 @@ class DatabaseTools {
         try {
             def listener = new LoggingListener()
             def backup = new FileOutputStream(file)
-            //TODO: FIX ME Commenting out until we find out backup over remote connection
+            // FIXME: Commenting out until we find out backup over remote connection
             if (!db.storage.remote) {
-                log.info "Backing up ${db.URL} to ${file.path}"
+                logger.info "Backing up ${db.URL} to ${file.path}"
                 db.backup(backup, null, null, listener, BACKUP_COMPRESSION_LEVEL, BACKUP_BUFFER_SIZE)
-                log.info "Backup complete."
+                logger.info "Backup complete."
             }
             return true
 
         } catch (IOException e) {
-            log.error "Unable to backup database: ${e}"
+            logger.error "Unable to backup database: ${e}"
         }
         return false
     }
@@ -214,15 +213,15 @@ class DatabaseTools {
     /** Restore a database using the Document API */
     static def restoreDatabase(ODatabaseDocumentTx db, File file) {
         try {
-            log.info "Restoring ${db.URL} from ${file.path}"
+            logger.info "Restoring ${db.URL} from ${file.path}"
             def listener = new LoggingListener()
             def backup = new FileInputStream(file)
             db.restore(backup, null, null, listener)
-            log.info "Restore complete."
+            logger.info "Restore complete."
             return true
 
         } catch (IOException e) {
-            log.error "Unable to restore database: ${e}"
+            logger.error "Unable to restore database: ${e}"
         }
         return false
     }
@@ -232,16 +231,20 @@ class DatabaseTools {
     }
 
     static def removeDatabaseListeners(ODatabaseDocumentTx database) {
-        for (ODatabaseListener l : database.browseListeners()) {
-            log.info "Unregister database listener: ${l}"
-            database.unregisterListener(l)
-        }
+        database.resetListeners()
+    }
+
+    /** Remove all pertinent data from the graph */
+    static def cleanGraphData(OrientGraphFactory factory) {
+        OrientBaseGraph graph = factory.tx
+        cleanGraphData(graph)
+        graph.shutdown()
     }
 
     /** Remove all pertinent data from the graph */
     static def cleanGraphData(OrientBaseGraph graph) {
         assert graph != null
-        log.debug "Cleaning existing graph data: ${graph}"
+        logger.debug "Cleaning existing graph data: ${graph}"
         def cmd = new OCommandSQL()
         try {
             graph.begin()
@@ -256,7 +259,7 @@ class DatabaseTools {
             graph.commit()
 
         } catch (OException e) {
-            log.error "Unable to clean graph data: ${e.message}"
+            logger.error "Unable to clean graph data: ${e.message}"
         }
     }
 
@@ -276,7 +279,7 @@ class DatabaseTools {
 
             } catch (OConcurrentModificationException e) {
                 if (message) {
-                    log.debug "Retrying: ${message}"
+                    logger.debug "Retrying: ${message}"
                 }
                 attempts -= 1
             }
@@ -316,28 +319,28 @@ class DatabaseTools {
                 }
 
                 try {
-                    log.debug "Command: ${sqlcmd}"
+                    logger.debug "Command: ${sqlcmd}"
                     cmd.setText(sqlcmd)
                     db.command(cmd).execute()
 
                 } catch (OSchemaException e) {
                     def error = "SQL command (${sqlcmd}) failed with schema error: ${e.message}"
-                    log.warn error
+                    logger.warn error
                     // errors << error
 
                 } catch (OCommandSQLParsingException e) {
                     def error = "SQL command (${sqlcmd}) did not parse: ${e.message}"
-                    log.error error
+                    logger.error error
                     errors << error
 
                 } catch (OCommandExecutorNotFoundException e) {
                     def error = "SQL command (${sqlcmd}) did not parse: ${e.message}"
-                    log.error error
+                    logger.error error
                     errors << error
 
                 } catch (OCommandExecutionException e) {
                     def error = "Erroneous command: ${sqlcmd}: ${e.message}"
-                    log.error error
+                    logger.error error
                     errors << error
                 }
             }
@@ -349,7 +352,7 @@ class DatabaseTools {
     static int withDocumentQuery(ODatabaseDocumentTx db, String sql, Closure closure) {
         def listener = new AsyncQueryListener(sql.toUpperCase().startsWith('SELECT FROM'), closure)
 
-        log.debug "Starting async query: ${sql}"
+        logger.debug "Starting async query: ${sql}"
         db.query(new OSQLAsynchQuery<ODocument>(sql, -1, listener))
 
         return listener.count
@@ -363,10 +366,49 @@ class DatabaseTools {
             }
         }
 
-        log.debug "Starting async query: ${sql}"
+        logger.debug "Starting async query: ${sql}"
         graph.command(new OSQLAsynchQuery<OrientElement>(sql, -1, listener)).execute()
 
         return listener.count
+    }
+
+    static int withNodesOfClass(OrientBaseGraph graph, String classname, Closure closure) {
+        def counter = new QueryRecordCounter(logger, graph.countVertices(classname))
+        logger.info String.format('Selecting %,d nodes from %s', counter.maxRows, classname)
+
+        for (Vertex n : graph.getVerticesOfClass(classname)) {
+            OrientVertex node = (OrientVertex) n
+            closure.call(node)
+            def key = node.getProperty('key') ?: node.record?.identity
+            counter.bump(key)
+        }
+        counter.done()
+        return counter.count
+    }
+
+    static int withEdgesOfClass(OrientBaseGraph graph, String classname, Closure closure) {
+        def counter = new QueryRecordCounter(logger, graph.countEdges(classname))
+        logger.info String.format('Selecting %,d edges from %s', counter.maxRows, classname)
+
+        for (Edge e : graph.getEdgesOfClass(classname)) {
+            OrientEdge edge = (OrientEdge) e
+            closure.call(edge)
+            counter.bump(edge.record.identity)
+        }
+        counter.done()
+        return counter.count
+    }
+
+    static int withDocumentsOfClass(ODatabaseDocumentTx db, String classname, Closure closure) {
+        def counter = new QueryRecordCounter(logger, db.countClass(classname))
+        logger.info String.format('Selecting %,d rows from %s', counter.maxRows, classname)
+
+        for (ODocument doc : db.browseClass(classname)) {
+            closure.call(doc)
+            counter.bump(doc.identity)
+        }
+        counter.done()
+        return counter.count
     }
 
     static List<ODocument> doDocumentQuery(OrientBaseGraph graph, String sql) {
@@ -432,87 +474,5 @@ class DatabaseTools {
             }
         }
         return counts
-    }
-}
-
-@Slf4j
-class AsyncQueryListener implements OCommandResultListener {
-
-    boolean identifiable
-    Closure closure
-
-    int minimumRows = 100
-    int minimumTime = 10
-
-    int count = 0
-    int interim = 0
-
-    long start, last, next
-
-    AsyncQueryListener(boolean i, Closure c) {
-        identifiable = i
-        closure = c
-
-        start = System.currentTimeMillis()
-        last = start
-        next = last + TimeUnit.SECONDS.toMillis(minimumTime)
-    }
-
-    Object convert(Object record) {
-        return record
-    }
-
-    @Override
-    boolean result(Object record) {
-        closure.call(convert(record), count)
-        count += 1
-
-        interim += 1
-        if (count % minimumRows == 0) {
-            if (log.debugEnabled) {
-                def now = System.currentTimeMillis()
-                if (now >= next) {
-                    long seconds = TimeUnit.MILLISECONDS.toSeconds(now - last)
-                    int rate = seconds ? interim / seconds : interim
-
-                    def identity = ''
-                    if (identifiable && record instanceof OIdentifiable) {
-                        identity = ((OIdentifiable) record).identity
-                    }
-
-                    log.debug String.format('Processed row %,d ... (%,d rows/sec) %s', count, rate, identity)
-                    last = now
-                    next = next + TimeUnit.SECONDS.toMillis(minimumTime)
-                    interim = 0
-                }
-            }
-        }
-        return true
-    }
-
-    @Override
-    void end() {
-        def now = System.currentTimeMillis()
-        log.debug String.format('Processed %,d rows in %,d seconds', count, TimeUnit.MILLISECONDS.toSeconds(now - start))
-    }
-
-    Object getResult() {
-        return null
-    }
-}
-
-@Slf4j
-class LoggingListener implements OCommandOutputListener {
-    def buffer = new StringBuilder()
-
-    @Override
-    void onMessage(String message) {
-        if (message.startsWith('\n- ')) {
-            buffer.append(message.substring(3))
-        } else {
-            buffer.append(message)
-            log.debug buffer.toString()
-            buffer.setLength(0)
-        }
     }
 }

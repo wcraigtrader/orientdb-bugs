@@ -10,6 +10,9 @@ import com.tinkerpop.blueprints.impls.orient.OrientGraph
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory
 import groovy.util.logging.Slf4j
 
+import static com.akonizo.orientdb.tools.DateTools.TIME_FORMAT
+import static com.akonizo.orientdb.tools.DateTools.TIME_ZONE
+
 @Slf4j
 class RemoteServerSchemaBug {
 
@@ -33,6 +36,7 @@ class RemoteServerSchemaBug {
         testWorkingOrderOfOperations('memory:working', true)
         testFailingOrderOfOperations('memory:failing', true)
         testAnotherWayToFail('memory:another', true)
+        testThirdWayToFail('memory:third', true)
 //        testIdentityStates('memory:identity', true)
 
         server = startServer()
@@ -52,6 +56,10 @@ class RemoteServerSchemaBug {
         dbPath = makeRemoteDatabase('remote-another')
         testAnotherWayToFail(dbPath)
         dropRemoteDatabase('remote-another')
+
+        dbPath = makeRemoteDatabase('remote-third')
+        testThirdWayToFail(dbPath)
+        dropRemoteDatabase('remote-third')
 
 //        dbPath = makeRemoteDatabase('remote-identity')
 //        testIdentityStates(dbPath)
@@ -82,11 +90,13 @@ class RemoteServerSchemaBug {
             defineSchema(factory)
 
             graph.rawGraph.reload()
+            log.info """DATETIMEFORMAT = \"${graph.rawGraph.storage.configuration.dateTimeFormat}\""""
             testUsingDatabase(graph)
 
         } finally {
             // Clean up connections
-            graph?.shutdown()
+            graph?.shutdown(true)
+            graph = null
             if (drop) {
                 factory?.drop()
             }
@@ -107,7 +117,8 @@ class RemoteServerSchemaBug {
 
             // Create but don't use a transactional graph instance
             graph = factory.tx
-            graph?.shutdown()
+            graph.shutdown(true)
+            graph = null
 
             // Define a schema for the database using a newly created non-transactional graph instance
             defineSchema(factory)
@@ -116,11 +127,48 @@ class RemoteServerSchemaBug {
             graph = factory.tx
 
             graph.rawGraph.reload()
+            log.info """DATETIMEFORMAT = \"${graph.rawGraph.storage.configuration.dateTimeFormat}\""""
             testUsingDatabase(graph)
 
         } finally {
             // Clean up connections
-            graph?.shutdown()
+            graph?.shutdown(true)
+            graph = null
+            if (drop) {
+                factory?.drop()
+            }
+            factory?.close()
+        }
+    }
+
+    /** Test working order of operations */
+    static void testThirdWayToFail(String dbPath, boolean drop = false) {
+        OrientGraphFactory factory = null
+        OrientBaseGraph graph = null, graph2 = null
+
+        log.info "Testing another way to fail against ${dbPath}"
+        try {
+            // Create a factory for the database
+            factory = new OrientGraphFactory(dbPath, 'admin', 'admin').setupPool(1, 5)
+            factory.setAutoStartTx(false)
+
+            // Create but don't use a transactional graph instance
+            graph = factory.tx
+
+            // Define a schema for the database using a newly created non-transactional graph instance
+            defineSchema(factory)
+
+            // Get Graph afterwards
+            graph2 = factory.tx
+
+            graph2.rawGraph.reload()
+            log.info """DATETIMEFORMAT = \"${graph2.rawGraph.storage.configuration.dateTimeFormat}\""""
+            testUsingDatabase(graph2)
+
+        } finally {
+            // Clean up connections
+            graph2?.shutdown(true)
+            graph?.shutdown(true)
             if (drop) {
                 factory?.drop()
             }
@@ -144,6 +192,7 @@ class RemoteServerSchemaBug {
 
             // Get Graph afterwards
             graph = factory.tx
+            log.info """DATETIMEFORMAT = \"${graph.rawGraph.storage.configuration.dateTimeFormat}\""""
 
             testUsingDatabase(graph)
 
@@ -203,8 +252,8 @@ class RemoteServerSchemaBug {
     public static Object defineSchema(OrientGraphFactory factory) {
         return DatabaseTools.withGraphDatabase(factory, false) { OrientBaseGraph g ->
             DatabaseTools.doGraphCommands g, """
-                alter database TIMEZONE "${DateTools.TIME_ZONE}"
-                alter database DATETIMEFORMAT "${DateTools.TIME_FORMAT}"
+                alter database TIMEZONE "${TIME_ZONE}"
+                alter database DATETIMEFORMAT "${TIME_FORMAT}"
                 alter database custom useLightweightEdges=false
                 alter database custom useVertexFieldsForEdgeLabels=true
 

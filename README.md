@@ -1,5 +1,24 @@
 This project is used for demonstrating *features* of OrientDB.
 
+# Updating data selected from an asynchronous query MAY cause OrientDB to hang if the query returns enough data
+
+[Test class](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSelectAndUpdateBug.groovy)
+
+In OrientDB 2.1.22, when selecting data using an asynchronous query, if you're also updating 
+the records returned by the query, the transaction may hang when `commit()` is called. 
+This appears to be dependent upon the number of records returned by the query.
+ 
+To reproduce this, use Gradle to run the application:
+```
+$ ./gradlew run [ -Psize=5000 ] [ -POV=2.1.22 ]
+```
+
+* You can vary the OrientDB version, by changing `OV`.
+* You can vary the number of records written and read by changing `size`.
+ 
+With OrientDB 2.1.22, 5000 records seems to be enough; with Orient 2.2.7, 6000 records seems to be enough. 
+Below that, the application will complete; above that, the first commit() inside of a SELECT query will hang.
+
 # Server Databases graph connections must not overlap
 
 [Test class](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSchemaBug.groovy)
