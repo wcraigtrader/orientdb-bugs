@@ -6,6 +6,7 @@ import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx
 import com.orientechnologies.orient.core.db.record.ridbag.ORidBag
 import com.orientechnologies.orient.core.exception.OCommandExecutionException
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException
+import com.orientechnologies.orient.core.exception.OQueryParsingException
 import com.orientechnologies.orient.core.exception.OSchemaException
 import com.orientechnologies.orient.core.id.ORID
 import com.orientechnologies.orient.core.record.ORecord
@@ -42,9 +43,9 @@ class DatabaseTools {
     static OrientGraphFactory createOrientFactory(
             String dbPath, String dbUser = OrientBaseGraph.ADMIN, String dbPass = 'admin',
             int minPool = 1, int maxPool = MAX_POOL_SIZE) {
-        def factory = new OrientGraphFactory(dbPath, dbUser, dbPass).setupPool(minPool, maxPool);
-        factory.setAutoStartTx(false);
-        return factory;
+        def factory = new OrientGraphFactory(dbPath, dbUser, dbPass).setupPool(minPool, maxPool)
+        factory.setAutoStartTx(false)
+        return factory
     }
 
     /** Open a database using the Document API */
@@ -77,7 +78,7 @@ class DatabaseTools {
         assert factory
 
         try {
-            logger.debug "Connecting to ${factory.class.simpleName} ..."
+            logger.debug "Connecting to ${factory.database.URL} ..."
             graph = transactional ? factory.tx : factory.noTx
             return withDatabaseConnection(graph.rawGraph, closure)
 
@@ -122,7 +123,7 @@ class DatabaseTools {
         assert factory
 
         try {
-            logger.debug "Connecting to ${factory.class.simpleName} ..."
+            logger.debug "Connecting to ${factory.database.URL} ..."
             graph = transactional ? factory.tx : factory.noTx
             return withDatabaseConnection(graph, closure)
 
@@ -192,6 +193,13 @@ class DatabaseTools {
     }
 
     /** Backup a database using the Document API */
+    static def backupDatabase(OrientGraphFactory factory, File file) {
+        withDocumentDatabase(factory) { ODatabaseDocumentTx db ->
+            return backupDatabase(db, file)
+        }
+    }
+
+    /** Backup a database using the Document API */
     static def backupDatabase(ODatabaseDocumentTx db, File file) {
         try {
             def listener = new LoggingListener()
@@ -208,6 +216,13 @@ class DatabaseTools {
             logger.error "Unable to backup database: ${e}"
         }
         return false
+    }
+
+    /** Restore a database using the Document API */
+    static def restoreDatabase(OrientGraphFactory factory, File file) {
+        withDocumentDatabase(factory) { ODatabaseDocumentTx db ->
+            return restoreDatabase(db, file)
+        }
     }
 
     /** Restore a database using the Document API */
@@ -236,9 +251,9 @@ class DatabaseTools {
 
     /** Remove all pertinent data from the graph */
     static def cleanGraphData(OrientGraphFactory factory) {
-        OrientBaseGraph graph = factory.tx
+        withGraphDatabase(factory) { graph ->
         cleanGraphData(graph)
-        graph.shutdown()
+        }
     }
 
     /** Remove all pertinent data from the graph */
@@ -287,19 +302,38 @@ class DatabaseTools {
         return attempts > 0 ? result : false
     }
 
+    /** Read SQL commands from a classpath resource and execute them for a database */
+    static def doGraphResourceCommands(OrientBaseGraph graph, final String sqlPath) {
+        return doDocumentResourceCommands(graph.rawGraph, sqlPath)
+    }
+
+    /** Read SQL commands from a classpath resource and execute them for a database */
+    static def doDocumentResourceCommands(ODatabaseDocumentTx db, final String sqlPath) {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader()
+        final InputStream stream = cl.getResourceAsStream(sqlPath)
+        if (stream) {
+            def lines = stream.readLines().join('\n')
+            return doDocumentCommands(db, lines)
+        }
+
+        String error = "Unable to locate ${sqlPath} on classpath"
+        logger.error error
+        return [error]
+    }
+
     /** Read SQL commands from a file and execute them for a database */
     static def doGraphCommands(OrientBaseGraph graph, File source) {
         return doDocumentCommands(graph.rawGraph, source.getText())
     }
 
-    /** Read SQL commands from a string and execute them for a database */
-    static def doGraphCommands(OrientBaseGraph graph, String lines) {
-        return doDocumentCommands(graph.rawGraph, lines)
-    }
-
     /** Read SQL commands from a file and execute them for a database */
     static def doDocumentCommands(ODatabaseDocumentTx db, File source) {
         return doDocumentCommands(db, source.getText())
+    }
+
+    /** Read SQL commands from a string and execute them for a database */
+    static def doGraphCommands(OrientBaseGraph graph, String lines) {
+        return doDocumentCommands(graph.rawGraph, lines)
     }
 
     /** Read SQL commands from a string and execute them for a database */
@@ -324,22 +358,22 @@ class DatabaseTools {
                     db.command(cmd).execute()
 
                 } catch (OSchemaException e) {
-                    def error = "SQL command (${sqlcmd}) failed with schema error: ${e.message}"
+                    String error = "SQL command (${sqlcmd}) failed with schema error: ${e.message}"
                     logger.warn error
                     // errors << error
 
                 } catch (OCommandSQLParsingException e) {
-                    def error = "SQL command (${sqlcmd}) did not parse: ${e.message}"
+                    String error = "SQL command (${sqlcmd}) did not parse: ${e.message}"
                     logger.error error
                     errors << error
 
                 } catch (OCommandExecutorNotFoundException e) {
-                    def error = "SQL command (${sqlcmd}) did not parse: ${e.message}"
+                    String error = "SQL command (${sqlcmd}) did not parse: ${e.message}"
                     logger.error error
                     errors << error
 
                 } catch (OCommandExecutionException e) {
-                    def error = "Erroneous command: ${sqlcmd}: ${e.message}"
+                    String error = "Erroneous command: ${sqlcmd}: ${e.message}"
                     logger.error error
                     errors << error
                 }
@@ -373,7 +407,9 @@ class DatabaseTools {
     }
 
     static int withNodesOfClass(OrientBaseGraph graph, String classname, Closure closure) {
-        def counter = new QueryRecordCounter(logger, graph.countVertices(classname))
+        def counter = new QueryRecordCounter(logger: logger, maxRows: (int) graph.countVertices(classname))
+        counter.init()
+
         logger.info String.format('Selecting %,d nodes from %s', counter.maxRows, classname)
 
         for (Vertex n : graph.getVerticesOfClass(classname)) {
@@ -387,7 +423,9 @@ class DatabaseTools {
     }
 
     static int withEdgesOfClass(OrientBaseGraph graph, String classname, Closure closure) {
-        def counter = new QueryRecordCounter(logger, graph.countEdges(classname))
+        def counter = new QueryRecordCounter(logger: logger, maxRows: (int) graph.countEdges(classname))
+        counter.init()
+
         logger.info String.format('Selecting %,d edges from %s', counter.maxRows, classname)
 
         for (Edge e : graph.getEdgesOfClass(classname)) {
@@ -400,7 +438,9 @@ class DatabaseTools {
     }
 
     static int withDocumentsOfClass(ODatabaseDocumentTx db, String classname, Closure closure) {
-        def counter = new QueryRecordCounter(logger, db.countClass(classname))
+        def counter = new QueryRecordCounter(logger: logger, maxRows: (int) db.countClass(classname))
+        counter.init()
+
         logger.info String.format('Selecting %,d rows from %s', counter.maxRows, classname)
 
         for (ODocument doc : db.browseClass(classname)) {

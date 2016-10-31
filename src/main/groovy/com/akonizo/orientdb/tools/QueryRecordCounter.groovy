@@ -1,69 +1,73 @@
 package com.akonizo.orientdb.tools
 
+import groovy.transform.Canonical
 import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import static java.util.concurrent.TimeUnit.*
 
+@Canonical(includes = ['logger', 'maxRows', 'minRows', 'minTime'])
 class QueryRecordCounter {
 
-    Logger logger
+    Logger logger = LoggerFactory.getLogger(QueryRecordCounter)
 
-    long maxRows = 0
-    int minimumRows = 100
-    int minimumTime = SECONDS.toMillis(10)
+    int maxRows = 0
+    int minRows = 100
+    int minTime = SECONDS.toMillis(10)
 
-    long count = 0
-    int interim = 0
-    long start, last, next
+    long startTime
+    int count = 0
 
-    QueryRecordCounter(Logger parentLogger, long max = 0, int minRows = 100, int minTime = 10) {
-        logger = parentLogger
+    int lastCount = 0
+    long lastTime, nextTime
 
-        maxRows = max
-        minimumRows = minRows
-        minimumTime = SECONDS.toMillis(minTime)
-
-        start = System.currentTimeMillis()
-        last = start
-        next = last + minimumTime
+    long getDuration(Date now = null) {
+        def currentTime = now?.time ?: System.currentTimeMillis()
+        return currentTime - startTime
     }
 
-    long getDuration() {
-        return System.currentTimeMillis() - start
+    void init(long initTime = 0) {
+        startTime = initTime ?: System.currentTimeMillis()
+        lastTime = startTime
+        nextTime = lastTime + minTime
     }
 
-    void bump(Object identity = '') {
+    void bump(Object identity = '', long ts = 0L) {
         count += 1
-        interim += 1
-
-        if (!logger.infoEnabled || count % minimumRows != 0) {
+        if (count % minRows != 0) {
             return
         }
 
-        def now = System.currentTimeMillis()
-
-        if (now < next) {
-            return
+        long now = ts ?: System.currentTimeMillis()
+        if (now >= nextTime) {
+            if (logger.infoEnabled) {
+                logger.info processingMessage(now, identity.toString())
         }
 
-        long lapTime = MILLISECONDS.toSeconds(now - last)
-        int rate = lapTime ? interim / lapTime : interim
-
-        if (maxRows) {
-            long projected = ((now - start) / count) * (maxRows - count)
-            def remaining = prettyTime(projected)
-            logger.info String.format('Processed row %,d ... (%,d rows/sec, %s left) %s', count, rate, remaining, identity)
-        } else {
-            logger.info String.format('Processed row %,d ... (%,d rows/sec) %s', count, rate, identity)
+            lastCount = count
+            lastTime = now
+            nextTime += minTime
         }
-
-        last = now
-        next = next + minimumTime
-        interim = 0
     }
 
     void done() {
         logger.info String.format('Processed %,d rows in %s', count, prettyTime(duration) )
+    }
+
+    String processingMessage(long now, String identity = '') {
+        // assert now >= lastTime
+
+        long lapTime = MILLISECONDS.toSeconds(now - lastTime)
+        int lapCount = count - lastCount
+        int rate = lapTime ? lapCount / lapTime : lapCount
+
+        if (maxRows) {
+            long projected = ((now - startTime) / count) * (maxRows - count)
+            def remaining = prettyTime(projected)
+            return String.format('Processed row %,d ... (%,d rows/sec, %s left) %s', count, rate, remaining, identity)
+        }
+
+        return String.format('Processed row %,d ... (%,d rows/sec) %s', count, rate, identity)
     }
 
     static String prettyTime(long interval) {

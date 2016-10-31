@@ -17,6 +17,7 @@ class AsyncQueryListener implements OCommandResultListener {
         closure = c
 
         counter = new QueryRecordCounter( log )
+        counter.init()
     }
 
     long getCount() {
@@ -26,6 +27,8 @@ class AsyncQueryListener implements OCommandResultListener {
     Object convert(Object record) {
         return record
     }
+
+    // ----- OCommandResultListener interface ---------------------------------
 
     @Override
     boolean result(Object record) {
