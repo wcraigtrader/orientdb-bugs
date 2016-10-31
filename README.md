@@ -1,4 +1,13 @@
+# OrientDB Bugs
+
 This project is used for demonstrating *features* of OrientDB.
+
+All of the features can be run from Gradle, using their task name.
+
+Any task may take arguments, which are defined using `-Parg=value`.
+Every task can take these extra arguments:
+* You can vary the Groovy version, by changing `GV` (eg: `-PGV=2.4.3`).
+* You can vary the OrientDB version, by changing `OV` (eg: `-POV=2.1.22`).
 
 # Updating data selected from an asynchronous query MAY cause OrientDB to hang if the query returns enough data
 
@@ -10,10 +19,9 @@ This appears to be dependent upon the number of records returned by the query.
  
 To reproduce this, use Gradle to run the application:
 ```
-$ ./gradlew run [ -Psize=5000 ] [ -POV=2.1.22 ]
+$ ./gradlew bug4 [ -Psize=5000 ] [ -POV=2.1.22 ]
 ```
 
-* You can vary the OrientDB version, by changing `OV`.
 * You can vary the number of records written and read by changing `size`.
  
 With OrientDB 2.1.22, 5000 records seems to be enough; with Orient 2.2.7, 6000 records seems to be enough. 
@@ -24,6 +32,11 @@ Below that, the application will complete; above that, the first commit() inside
 [Test class](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSchemaBug.groovy)
 
 In OrientDB 2.1.20, when connecting to a remote database with a OrientGraphFactory with autoStartTx disabled, you cannot have overlapped graph connections within a single thread. This works with local memory databases, and local physical databases (plocal:). 
+
+To reproduce this, use Gradle to run the application:
+```
+$ ./gradlew bug3 -POV=2.1.20
+```
 
 In the example code, I create a remote database, then:
  1. Populate it's schema using a non-transactional graph, and 
@@ -101,6 +114,11 @@ Example run:
 
 In OrientDB < 2.1.20, if you create a Vertex with an EmbeddedMap property, and that Map is defined as Map<String,ORID>, you can persist an ORecordId in the map, but when you retrieve the Map from Orient, Orient will 'help' you by converting the Map into an OrientElementIterator instead.
 
+To reproduce this, use Gradle to run the application:
+```
+$ ./gradlew bug2 -POV=2.1.11
+```
+
 # Graph / ODocument interaction
 
 [Test class](src/main/groovy/com/akonizo/orientdb/bugs/ODocumentBug.groovy)
@@ -108,7 +126,7 @@ In OrientDB < 2.1.20, if you create a Vertex with an EmbeddedMap property, and t
 In OrientDB 1.7.X you can retrieve a document from the graph, and then shutdown the graph, and still access the document.  In Orient 2.0.X, this behavior is not supported.
 
 ```
-$ ./gradlew -q -POV=1.7.8 run
+$ ./gradlew bug1 -POV=1.7.8
 May 08, 2015 10:46:05 PM com.orientechnologies.common.log.OLogManager log
 WARNING: Current implementation of storage does not support sbtree collections
 May 08, 2015 10:46:06 PM com.orientechnologies.common.log.OLogManager log

@@ -1,12 +1,9 @@
 // Allow selecting OrientDB and Groovy from the commandline
-def javaVersion = System.getProperty( 'java.version' )
 def groovyVersion = project.hasProperty("GV") ? GV : '2.4.5'
 def orientVersion = project.hasProperty('OV') ? OV : '2.1.22' // '2.1.20'
 
 apply plugin: 'groovy'
 apply plugin: 'application'
-
-mainClassName = 'com.akonizo.orientdb.bugs.RemoteServerSelectAndUpdateBug'
 
 repositories {
     mavenCentral()
@@ -27,6 +24,36 @@ dependencies {
     runtime 'org.slf4j:log4j-over-slf4j:1.7.12'
 }
 
+ext {
+    javaVersionx = System.getProperty( 'java.version' )
+
+    bugs = [
+        bug1: [ main: "com.akonizo.orientdb.bugs.ODocumentBug", args: [] ],
+        bug2: [ main: "com.akonizo.orientdb.bugs.VertexMapBug", args: [] ],
+        bug3: [ main: "com.akonizo.orientdb.bugs.RemoteServerSchemaBug", args: [] ],
+        bug4: [ main: "com.akonizo.orientdb.bugs.RemoteServerSelectAndUpdateBug", args: [ 'size' ] ],
+    ]
+}
+
+// Add tasks for bugs, and collect commandline arguments
+
+allprojects { Project p ->
+    bugs.each { String name, Map parms ->
+        JavaExec t = tasks.create(name, JavaExec)
+        t.main = parms['main']
+        t.description = parms['main']
+        t.group = 'application'
+        t.classpath = p.sourceSets.main.runtimeClasspath
+        def argList = []
+        parms['args'].each { String argName ->
+            if (project.hasProperty(argName)) {
+                argList << project.properties[argName]
+            }
+        }
+        t.args = argList
+    }
+}
+
 // Ensure everything's using the same version of Groovy
 configurations.all {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
@@ -36,6 +63,7 @@ configurations.all {
     }
 }
 
+mainClassName = 'com.akonizo.orientdb.bugs.RemoteServerSelectAndUpdateBug'
 run {
     def arglist = []
     if ( project.hasProperty('size') ) {
@@ -43,3 +71,8 @@ run {
     }
     args( arglist )
 }
+
+/*
+ * Load external build scripts
+ */
+apply from: 'tools.gradle'

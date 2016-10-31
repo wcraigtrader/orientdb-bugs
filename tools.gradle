@@ -1,0 +1,79 @@
+// Gradle tools
+
+// subprojects {
+    task debugSourceSets << {
+        project.sourceSets.each { SourceSet ss ->
+            logger.lifecycle "******************** ${ss.name} ********************"
+            logger.lifecycle "configuration names = ${ss.compileConfigurationName}, ${ss.runtimeConfigurationName}"
+            logger.lifecycle "task names          = ${ss.compileJavaTaskName}, ${ss.processResourcesTaskName}, ${ss.classesTaskName}, ${ss.jarTaskName}"
+            logger.lifecycle ''
+            logger.lifecycle "allSource           = ${printableSourceDirectorySet(ss.allSource)}"
+            logger.lifecycle "allJava             = ${printableSourceDirectorySet(ss.allJava)}"
+            logger.lifecycle "java                = ${printableSourceDirectorySet(ss.java)}"
+            logger.lifecycle "resources           = ${printableSourceDirectorySet(ss.resources)}"
+            logger.lifecycle ''
+            logger.lifecycle "output.classesDir   = ${ss.output.classesDir}"
+            logger.lifecycle "output.resourcesDir = ${ss.output.resourcesDir}"
+            logger.lifecycle ''
+            logger.lifecycle "compileClasspath:\n${printableClasspath(ss.compileClasspath)}\n"
+            logger.lifecycle "runtimeClasspath:\n${printableClasspath(ss.runtimeClasspath)}\n"
+        }
+    }
+
+    task version << {
+        logger.lifecycle "Gradle version:  ${project.getGradle().getGradleVersion()}"
+        logger.lifecycle "Gradle Groovy:   ${GroovySystem.getVersion()}"
+        logger.lifecycle "Java version:    ${javaVersion}"
+        logger.lifecycle "Java Verify Bug: ${javaVerifyBug}"
+        logger.lifecycle ''
+        logger.lifecycle "Project:         ${project.name}"
+        logger.lifecycle "Project path:    ${project.projectDir}"
+    }
+
+    // Additional tasks that are useful for debugging build
+    task printProjectDetails(description: 'Print all project properties and additional details') << {
+        logger.lifecycle "**** Details for ${project.name} ****"
+        System.properties.entrySet().sort { it.key }.each {
+            logger.lifecycle "\t${project.name}\tSystem property\t${it.key}\t${it.value}"
+        }
+        project.properties.entrySet().sort { it.key }.each {
+            logger.lifecycle "\t${project.name}\tProject property\t${it.key}\t${it.value}"
+        }
+        logger.lifecycle "project\t${project.name}\t${project.dump()}"
+    }
+
+    task printConfigurations(description: "Print configurations.") << {
+        def names = configurations*.name
+        names?.sort()?.each { logger.lifecycle it }
+    }
+// }
+
+/*
+ * Methods to support the tasks declared above
+ */
+
+def printableSourceDirectorySet(SourceDirectorySet sds) {
+    return sds.srcDirs.collect { relativePath(it) }.sort()
+}
+
+def printableClasspath(FileCollection classPath) {
+    def base = System.getProperty('user.dir')
+    def home = System.getenv('HOME')
+    def java = file(System.getProperty('java.home')).parent
+    def cache = home + '/.gradle/caches/modules-2/files-2.1'
+
+    classPath.asPath.split(':').collect { String line ->
+        if (line.startsWith(base)) {
+            line.replace("${base}/", 'PROJECT||')
+        } else if (line.startsWith(cache)) {
+            def parts = line.replace(cache, '').split('/') // group/artifact/version/hash/jar-file
+            "GRADLE ||${parts[5]}"
+        } else if (line.startsWith(home)) {
+            line.replace("${home}/", 'HOME   ||')
+        } else if (line.startsWith(java)) {
+            line.replace("${java}/", 'JAVA   ||')
+        } else {
+            line
+        }
+    }.join('\n')
+}
