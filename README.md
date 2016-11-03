@@ -137,7 +137,7 @@ WARNING: Current implementation of storage does not support sbtree collections
 2015-05-08 22:46:06 INFO  c.a.o.b.ODocumentBug - Inside graph:  foo#11:0{key:ann,data:someone} v0
 2015-05-08 22:46:06 INFO  c.a.o.b.ODocumentBug - Outside graph: foo#11:0{key:ann,data:someone} v0
 
-$ ./gradlew -q -POV=2.0.8 run
+$ ./gradlew bug1 -POV=2.0.8
 May 08, 2015 10:46:13 PM com.orientechnologies.common.log.OLogManager log
 INFO: OrientDB auto-config DISKCACHE=10,695MB (heap=3,641MB os=16,384MB disk=156,266MB)
 2015-05-08 22:46:14 INFO  c.a.o.b.ODocumentBug - Creating foo with key ann
