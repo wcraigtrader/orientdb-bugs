@@ -9,7 +9,7 @@ Every task can take these extra arguments:
 * You can vary the Groovy version, by changing `GV` (eg: `-PGV=2.4.3`).
 * You can vary the OrientDB version, by changing `OV` (eg: `-POV=2.1.22`).
 
-# Updating data selected from an asynchronous query MAY cause OrientDB to hang if the query returns enough data
+# bug4: Updating data selected from an asynchronous query MAY cause OrientDB to hang if the query returns enough data
 
 [Test class](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSelectAndUpdateBug.groovy)
 
@@ -27,7 +27,7 @@ $ ./gradlew bug4 [ -Psize=5000 ] [ -POV=2.1.22 ]
 With OrientDB 2.1.22, 5000 records seems to be enough; with Orient 2.2.7, 6000 records seems to be enough. 
 Below that, the application will complete; above that, the first commit() inside of a SELECT query will hang.
 
-# Server Databases graph connections must not overlap
+# bug3: Server Databases graph connections must not overlap
 
 [Test class](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSchemaBug.groovy)
 
@@ -108,7 +108,7 @@ Example run:
 2016-08-20 14:58:57 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Test complete
 ```
 
-# Embedded Maps with ORecordID values fail
+# bug2: Embedded Maps with ORecordID values fail
 
 [Test class](src/main/groovy/com/akonizo/orientdb/bugs/VertexMapBug.groovy)
 
@@ -119,7 +119,7 @@ To reproduce this, use Gradle to run the application:
 $ ./gradlew bug2 -POV=2.1.11
 ```
 
-# Graph / ODocument interaction
+# bug1: Graph / ODocument interaction
 
 [Test class](src/main/groovy/com/akonizo/orientdb/bugs/ODocumentBug.groovy)
 
