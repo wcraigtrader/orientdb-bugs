@@ -22,7 +22,7 @@ class Data {
 
     /** Random constructor */
     Data( RandomGenerator r ) {
-        log.debug( "Constructed with ${r}" )
+        log.debug( "Constructed with ${r.class.simpleName}" )
         this.rand = r
 
         if (WORDS == null) {
