@@ -3,7 +3,7 @@ def groovyVersion = project.hasProperty("GV") ? GV : '2.4.5'
 def orientVersion = project.hasProperty('OV') ? OV : '2.1.22' // '2.1.20'
 
 apply plugin: 'groovy'
-apply plugin: 'application'
+// apply plugin: 'application'
 
 repositories {
     mavenCentral()
@@ -28,10 +28,11 @@ ext {
     javaVersionx = System.getProperty( 'java.version' )
 
     bugs = [
-        bug1: [ main: "com.akonizo.orientdb.bugs.ODocumentBug", args: [] ],
-        bug2: [ main: "com.akonizo.orientdb.bugs.VertexMapBug", args: [] ],
-        bug3: [ main: "com.akonizo.orientdb.bugs.RemoteServerSchemaBug", args: [] ],
-        bug4: [ main: "com.akonizo.orientdb.bugs.RemoteServerSelectAndUpdateBug", args: [ 'size' ] ],
+        bug1: [ main: 'com.akonizo.orientdb.bugs.ODocumentBug', args: [] ],
+        bug2: [ main: 'com.akonizo.orientdb.bugs.VertexMapBug', args: [] ],
+        bug3: [ main: 'com.akonizo.orientdb.bugs.RemoteServerSchemaBug', args: [] ],
+        bug4: [ main: 'com.akonizo.orientdb.bugs.RemoteServerSelectAndUpdateBug', args: [ 'size' ] ],
+        bug5: [ main: 'com.akonizo.orientdb.bugs.CaseInsensitiveIndexing', args: [] ],
     ]
 }
 
@@ -61,15 +62,6 @@ configurations.all {
             details.useVersion groovyVersion.split(':')[0]
         }
     }
-}
-
-mainClassName = 'com.akonizo.orientdb.bugs.RemoteServerSelectAndUpdateBug'
-run {
-    def arglist = []
-    if ( project.hasProperty('size') ) {
-        arglist << size
-    }
-    args( arglist )
 }
 
 /*
