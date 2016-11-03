@@ -9,9 +9,11 @@ Every task can take these extra arguments:
 * You can vary the Groovy version, by changing `GV` (eg: `-PGV=2.4.3`).
 * You can vary the OrientDB version, by changing `OV` (eg: `-POV=2.1.22`).
 
-# bug4: Updating data selected from an asynchronous query MAY cause OrientDB to hang if the query returns enough data
+-----
 
-[Test class](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSelectAndUpdateBug.groovy)
+## bug4: Updating data selected from an asynchronous query MAY cause OrientDB to hang if the query returns enough data
+
+[Test class: RemoteServerSelectAndUpdateBug.groovy](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSelectAndUpdateBug.groovy)
 
 In OrientDB 2.1.22, when selecting data using an asynchronous query, if you're also updating 
 the records returned by the query, the transaction may hang when `commit()` is called. 
@@ -27,9 +29,11 @@ $ ./gradlew bug4 [ -Psize=5000 ] [ -POV=2.1.22 ]
 With OrientDB 2.1.22, 5000 records seems to be enough; with Orient 2.2.7, 6000 records seems to be enough. 
 Below that, the application will complete; above that, the first commit() inside of a SELECT query will hang.
 
-# bug3: Server Databases graph connections must not overlap
+-----
 
-[Test class](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSchemaBug.groovy)
+## bug3: Server Databases graph connections must not overlap
+
+[Test class: RemoteServerSchemaBug.groovy](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSchemaBug.groovy)
 
 In OrientDB 2.1.20, when connecting to a remote database with a OrientGraphFactory with autoStartTx disabled, you cannot have overlapped graph connections within a single thread. This works with local memory databases, and local physical databases (plocal:). 
 
@@ -108,9 +112,11 @@ Example run:
 2016-08-20 14:58:57 INFO  main                      c.a.o.b.RemoteServerSchemaBug - Test complete
 ```
 
-# bug2: Embedded Maps with ORecordID values fail
+-----
 
-[Test class](src/main/groovy/com/akonizo/orientdb/bugs/VertexMapBug.groovy)
+## bug2: Embedded Maps with ORecordID values fail
+
+[Test class: VertexMapBug.groovy](src/main/groovy/com/akonizo/orientdb/bugs/VertexMapBug.groovy)
 
 In OrientDB < 2.1.20, if you create a Vertex with an EmbeddedMap property, and that Map is defined as Map<String,ORID>, you can persist an ORecordId in the map, but when you retrieve the Map from Orient, Orient will 'help' you by converting the Map into an OrientElementIterator instead.
 
@@ -119,9 +125,11 @@ To reproduce this, use Gradle to run the application:
 $ ./gradlew bug2 -POV=2.1.11
 ```
 
-# bug1: Graph / ODocument interaction
+-----
 
-[Test class](src/main/groovy/com/akonizo/orientdb/bugs/ODocumentBug.groovy)
+## bug1: Graph / ODocument interaction
+
+[Test class: ODocumentBug.groovy](src/main/groovy/com/akonizo/orientdb/bugs/ODocumentBug.groovy)
 
 In OrientDB 1.7.X you can retrieve a document from the graph, and then shutdown the graph, and still access the document.  In Orient 2.0.X, this behavior is not supported.
 
