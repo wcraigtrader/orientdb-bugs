@@ -14,6 +14,9 @@ bin/
 *.iws
 .idea/
 
+# Orient
+databases/
+
 # Application
 *.log
 
