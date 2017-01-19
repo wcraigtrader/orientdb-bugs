@@ -165,12 +165,12 @@ class TransactionLogListener implements ODatabaseListener {
         clearPendingOperations(db)
     }
 
-    @Override
+    // @Override
     void onBeforeCommand(OCommandRequestText iCommand, OCommandExecutor executor) {
         log.trace "onBeforeCommand()"
     }
 
-    @Override
+    // @Override
     void onAfterCommand(OCommandRequestText iCommand, OCommandExecutor executor, Object result) {
         log.trace "onAfterCommand()"
         logCommand(iCommand.text)

@@ -11,6 +11,17 @@ Every task can take these extra arguments:
 
 -----
 
+## bug6: Composite index keys with String values doesn't work in the Graph API
+
+In OrientDB 2.1.22 and later, using the Graph API to retrieve vertices by index using composite keys composed entirely of strings fails.
+
+To reproduce this, use Gradle to run the application:
+```
+$ ./gradlew bug6
+```
+
+-----
+
 ## bug4: Updating data selected from an asynchronous query MAY cause OrientDB to hang if the query returns enough data
 
 [Test class: RemoteServerSelectAndUpdateBug.groovy](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSelectAndUpdateBug.groovy)
