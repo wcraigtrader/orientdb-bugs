@@ -20,7 +20,7 @@ class OFunctionIndexingBug {
             case '2.0':
                 assert version >= '2.0.10'
                 log.info "Create initial database and add a function"
-                setDatabase( '20' )
+                setDatabase('20')
                 dbFile.deleteDir()
                 createGraphDatabase(dbPath)
                 withGraphFactory(dbPath) { OrientGraphFactory factory ->
@@ -29,7 +29,7 @@ class OFunctionIndexingBug {
                            CREATE FUNCTION fun20 "return list?.countBy { String s -> s }" PARAMETERS [ list ] IDEMPOTENT true LANGUAGE groovy
                         """
                     }
-                    backupDatabase(factory, new File( "backup-20.zip"))
+                    backupDatabase(factory, new File("backup-20.zip"))
                 }
                 log.info "Now re-run with -POV=2.1.22"
                 break
@@ -38,9 +38,12 @@ class OFunctionIndexingBug {
                 log.info "Test upgrading older database and adding a function"
                 setDatabase('21')
                 dbFile.deleteDir()
+                def bkup = new File('backup-20.zip')
                 createGraphDatabase(dbPath)
-                withGraphFactory(dbPath) { OrientGraphFactory factory ->
-                    restoreDatabase(factory, new File( 'backup-20.zip'))
+                if (bkup.exists()) {
+                    withGraphFactory(dbPath) { OrientGraphFactory factory ->
+                        restoreDatabase(factory, bkup)
+                    }
                 }
                 withGraphFactory(dbPath) { OrientGraphFactory factory ->
                     withGraphDatabase(factory, false) { OrientBaseGraph graph ->
@@ -48,7 +51,7 @@ class OFunctionIndexingBug {
                            CREATE FUNCTION fun21 "return list?.countBy { String s -> s }" PARAMETERS [ list ] IDEMPOTENT true LANGUAGE groovy
                         """
                     }
-                    backupDatabase(factory, new File( "backup-21.zip"))
+                    backupDatabase(factory, new File("backup-21.zip"))
                 }
 
                 log.info "Now re-run with -POV=2.2.19"
@@ -58,9 +61,12 @@ class OFunctionIndexingBug {
                 log.info "Test upgrading older database again and adding another function"
                 setDatabase('22')
                 dbFile.deleteDir()
+                def bkup = new File('backup-21.zip')
                 createGraphDatabase(dbPath)
-                withGraphFactory(dbPath) { OrientGraphFactory factory ->
-                    restoreDatabase(factory, new File( 'backup-21.zip'))
+                if (bkup.exists()) {
+                    withGraphFactory(dbPath) { OrientGraphFactory factory ->
+                        restoreDatabase(factory, bkup)
+                    }
                 }
                 withGraphFactory(dbPath) { OrientGraphFactory factory ->
                     withGraphDatabase(factory, false) { OrientBaseGraph graph ->
@@ -76,8 +82,8 @@ class OFunctionIndexingBug {
         }
     }
 
-    static void setDatabase( String version ) {
-        dbFile = new File( "function-database-${version}" )
+    static void setDatabase(String version) {
+        dbFile = new File("function-database-${version}")
         dbPath = "plocal:${dbFile.absolutePath}" as String
     }
 }
