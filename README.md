@@ -22,6 +22,24 @@ $ ./gradlew bug6
 
 -----
 
+## bug5: Upgrading a restored database in Orient 2.2.X doesn't create correct OFunction indexes 
+
+In OrientDB 2.2.X and later, restoring a database and then inserting a new DB function will fail 
+because Orient does not correctly recognize the indexes for the OFunction table.
+
+To reproduce this, use Gradle to run the application three times, with Orient versions 2.0.18, 2.1.22, and 2.2.19:
+```
+$ ./gradlew bug5 -POV=2.0.18
+$ ./gradlew bug5 -POV=2.1.22
+$ ./gradlew bug5 -POV=2.2.19
+```
+
+The first pass will create a database, add a function, and then backup the database.
+The second pass will create a new database, restore the first backup, add a function, then backup the database.
+The third pass will create a new database, restore the second backup, and add a function -- and throw an exception.
+
+-----
+
 ## bug4: Updating data selected from an asynchronous query MAY cause OrientDB to hang if the query returns enough data
 
 [Test class: RemoteServerSelectAndUpdateBug.groovy](src/main/groovy/com/akonizo/orientdb/bugs/RemoteServerSelectAndUpdateBug.groovy)

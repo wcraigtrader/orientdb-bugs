@@ -48,6 +48,31 @@ class DatabaseTools {
         return factory
     }
 
+    static def withGraphFactory( String dbPath, Closure<?> closure ) {
+        return withGraphFactory( dbPath, OrientBaseGraph.ADMIN, 'admin', closure )
+    }
+
+    static def withGraphFactory(String dbPath, String dbUser, String dbPass, Closure<?> closure) {
+        OrientGraphFactory factory = null
+
+        assert dbPath
+        assert dbUser
+        assert dbPass
+
+        try {
+            factory = new OrientGraphFactory(dbPath, dbUser, dbPass).setupPool(1, MAX_POOL_SIZE)
+            factory.setAutoStartTx(false)
+            return closure.call( factory )
+
+        } finally {
+            try {
+                factory?.close()
+            } catch (Exception e) {
+                logger.error "Factory close exception", e
+            }
+        }
+    }
+
     /** Open a database using the Document API */
     static def withDocumentDatabase(String dbPath, String dbUser, String dbPass, Closure<?> closure) {
         ODatabaseDocumentTx db = null
@@ -205,11 +230,11 @@ class DatabaseTools {
             def listener = new LoggingListener()
             def backup = new FileOutputStream(file)
             // FIXME: Commenting out until we find out backup over remote connection
-            if (!db.storage.remote) {
+            // if (!db.storage.remote) {
                 logger.info "Backing up ${db.URL} to ${file.path}"
                 db.backup(backup, null, null, listener, BACKUP_COMPRESSION_LEVEL, BACKUP_BUFFER_SIZE)
                 logger.info "Backup complete."
-            }
+            // }
             return true
 
         } catch (IOException e) {
