@@ -2,7 +2,6 @@ package com.akonizo.orientdb.bugs
 
 import com.orientechnologies.orient.core.index.OCompositeKey
 import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph
-import com.tinkerpop.blueprints.impls.orient.OrientGraph
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory
 import com.tinkerpop.blueprints.impls.orient.OrientVertex
 import groovy.util.logging.Slf4j
@@ -19,7 +18,7 @@ class OCompositeKeyBug {
 
         OrientGraphFactory factory = createOrientFactory('memory:test')
 
-        withGraphDatabase(factory, false) { graph ->
+        withGraphDatabase(factory, false) { OrientBaseGraph graph ->
             doGraphCommands graph, """
 -- Initialize database configuration
 alter database TIMEZONE UTC
@@ -28,21 +27,31 @@ alter database custom useLightweightEdges=false
 alter database custom useVertexFieldsForEdgeLabels=true
 alter database custom sqlStrict=false
 
+-- Add link properties for proper edge indexing
+create property E.in LINK
+create property E.out LINK
+
 -- account is a vertex class
 create class account extends V
 create property account.description STRING
 create property account.namespace STRING
 create property account.name STRING
+create property account.first INTEGER
+create property account.second INTEGER
+
+create class knows extends E
 
 create index account.composite on account (name, namespace) unique
+create index knows.unique on knows (out,in) unique
 """
         }
 
         withGraphDatabase(factory, true) { OrientBaseGraph graph ->
             // Create a new graph node
             graph.begin()
-            graph.addVertex('class:account', [name: 'foo', namespace: 'bar', description: 'foobar'])
-            graph.addVertex('class:account', [name: 'foo', namespace: 'baz', description: 'foobaz'])
+            def v1 = graph.addVertex('class:account', [name: 'foo', namespace: 'bar', description: 'foobar', first: 111, second: 222])
+            def v2 = graph.addVertex('class:account', [name: 'foo', namespace: 'baz', description: 'foobaz', first: 333, second: 444])
+            def e1 = v1.addEdge(class: knows, v2)
             graph.commit()
 
             log.info "Retrive a node via the index, using SQL"
@@ -58,6 +67,7 @@ create index account.composite on account (name, namespace) unique
                 log.error "Stacktrace", e
             }
 
+            log.info "Retrieve an edge via the Graph API"
         }
 
         factory.drop()
