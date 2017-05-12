@@ -197,6 +197,13 @@ class DatabaseTools {
             graph = factory.noTx
 
             doGraphCommands graph, """
+                alter database TIMEZONE "UTC"
+                alter database DATETIMEFORMAT "yyyy-MM-dd'T'HH:mm:ssXXX"
+                alter database minimumclusters 1
+                alter database custom useLightweightEdges=false
+                alter database custom useVertexFieldsForEdgeLabels=true
+                alter database custom strictSql=false
+
                 update OUser set password = '$dbAdminPass'  where name = 'admin'
                 update OUser set password = '$dbReaderPass' where name = 'reader'
                 update OUser set password = '$dbWriterPass' where name = 'writer'
