@@ -74,6 +74,7 @@ class OFunctionIndexingBug {
                            CREATE FUNCTION fun22 "return list?.countBy { String s -> s }" PARAMETERS [ list ] IDEMPOTENT true LANGUAGE groovy
                         """
                     }
+                    backupDatabase(factory, new File("backup-22.zip"))
                 }
                 break
 
