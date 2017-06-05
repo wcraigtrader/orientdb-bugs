@@ -21,8 +21,8 @@ class OCompositeKeyBug {
         withGraphDatabase(factory, false) { OrientBaseGraph graph ->
             doGraphCommands graph, """
 -- Initialize database configuration
-alter database TIMEZONE UTC
-alter database DATETIMEFORMAT yyyy-MM-dd'T'HH:mm:ssXXX
+alter database TIMEZONE "UTC"
+alter database DATETIMEFORMAT "yyyy-MM-dd'T'HH:mm:ssXXX"
 alter database custom useLightweightEdges=false
 alter database custom useVertexFieldsForEdgeLabels=true
 alter database custom sqlStrict=false
@@ -51,7 +51,7 @@ create index knows.unique on knows (out,in) unique
             graph.begin()
             def v1 = graph.addVertex('class:account', [name: 'foo', namespace: 'bar', description: 'foobar', first: 111, second: 222])
             def v2 = graph.addVertex('class:account', [name: 'foo', namespace: 'baz', description: 'foobaz', first: 333, second: 444])
-            def e1 = v1.addEdge(class: knows, v2)
+            def e1 = v1.addEdge('knows', v2)
             graph.commit()
 
             log.info "Retrive a node via the index, using SQL"
